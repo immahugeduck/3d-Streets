@@ -1,0 +1,267 @@
+/* ── Top maneuver panel ────────────────────────────────────────────────── */
+.topPanel {
+  position: absolute;
+  top: 0; left: 0; right: 0;
+  z-index: 50;
+  padding: calc(var(--safe-top) + 8px) 16px 16px;
+  background: linear-gradient(to bottom, rgba(6,8,16,0.98) 60%, transparent);
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  pointer-events: auto;
+}
+
+.arrowBox {
+  width: 64px; height: 64px;
+  flex-shrink: 0;
+  border-radius: var(--r-md);
+  background: var(--accent-dim);
+  border: 1px solid rgba(0,212,255,0.3);
+  display: flex; align-items: center; justify-content: center;
+  box-shadow: 0 0 20px var(--accent-glow);
+}
+.arrowIcon {
+  font-size: 32px;
+  line-height: 1;
+}
+
+.stepInfo { flex: 1; min-width: 0; }
+.stepDist {
+  font-family: var(--font-hud);
+  font-size: 42px;
+  font-weight: 800;
+  color: var(--text-primary);
+  line-height: 1;
+  letter-spacing: -0.02em;
+}
+.stepStreet {
+  font-family: var(--font-ui);
+  font-size: 17px;
+  font-weight: 600;
+  color: var(--text-secondary);
+  margin-top: 3px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.nextStep {
+  font-family: var(--font-ui);
+  font-size: 12px;
+  color: var(--text-muted);
+  margin-top: 3px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.endBtn {
+  width: 44px; height: 44px;
+  border-radius: 50%;
+  background: rgba(255,78,106,0.15);
+  border: 0.5px solid rgba(255,78,106,0.3);
+  color: var(--red);
+  font-size: 14px;
+  font-weight: 700;
+  cursor: pointer;
+  display: flex; align-items: center; justify-content: center;
+  flex-shrink: 0;
+  transition: all 0.15s;
+}
+.endBtn:active { transform: scale(0.9); background: rgba(255,78,106,0.3); }
+
+/* ── Reroute banner ───────────────────────────────────────────────────── */
+.rerouteBanner {
+  position: absolute;
+  top: calc(var(--safe-top) + 100px);
+  left: 16px; right: 16px;
+  z-index: 55;
+  background: var(--bg-surface);
+  border: 0.5px solid var(--border-soft);
+  border-radius: var(--r-lg);
+  padding: 12px 14px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  box-shadow: 0 4px 24px rgba(0,0,0,0.6);
+  backdrop-filter: blur(16px);
+}
+.rerouteLeft { display: flex; align-items: center; gap: 10px; }
+.rerouteDot {
+  width: 10px; height: 10px;
+  border-radius: 50%;
+  background: var(--green);
+  box-shadow: 0 0 8px rgba(0,229,160,0.6);
+  animation: dot-pulse 1.5s ease-in-out infinite;
+}
+@keyframes dot-pulse {
+  0%, 100% { transform: scale(1); }
+  50%       { transform: scale(1.3); }
+}
+.rerouteTitle {
+  font-family: var(--font-ui); font-size: 14px; font-weight: 700;
+  color: var(--text-primary);
+}
+.rerouteSub {
+  font-family: var(--font-ui); font-size: 12px;
+  color: var(--text-secondary); margin-top: 2px;
+}
+.rerouteActions { display: flex; gap: 8px; }
+.rerouteAccept {
+  padding: 7px 18px;
+  border-radius: var(--r-pill);
+  background: var(--green);
+  border: none; color: #000;
+  font-family: var(--font-ui); font-size: 13px; font-weight: 700;
+  cursor: pointer;
+  transition: transform 0.15s;
+}
+.rerouteAccept:active { transform: scale(0.94); }
+.rerouteDismiss {
+  padding: 7px 14px;
+  border-radius: var(--r-pill);
+  background: var(--bg-elevated);
+  border: 0.5px solid var(--border-subtle);
+  color: var(--text-secondary);
+  font-family: var(--font-ui); font-size: 13px; font-weight: 500;
+  cursor: pointer;
+}
+
+/* ── Speed HUD ────────────────────────────────────────────────────────── */
+.speedHUD {
+  position: absolute;
+  left: 16px;
+  top: 50%;
+  transform: translateY(-50%);
+  z-index: 50;
+  width: 74px;
+  background: var(--bg-surface);
+  border-radius: var(--r-md);
+  border: 1px solid var(--border-subtle);
+  padding: 10px 8px 8px;
+  text-align: center;
+  box-shadow: 0 4px 20px rgba(0,0,0,0.6);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+  transition: border-color 0.3s;
+}
+.speedHUD.normal  { border-color: rgba(0,229,160,0.35); }
+.speedHUD.warning { border-color: rgba(255,179,71,0.5); }
+.speedHUD.danger  { border-color: rgba(255,78,106,0.6); }
+
+.speedNum {
+  font-family: var(--font-hud);
+  font-size: 36px;
+  font-weight: 900;
+  line-height: 1;
+  letter-spacing: -0.02em;
+  transition: color 0.3s;
+}
+.normal  .speedNum { color: var(--green); }
+.warning .speedNum { color: var(--amber); }
+.danger  .speedNum { color: var(--red); }
+
+.speedUnit {
+  font-family: var(--font-hud);
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  color: var(--text-muted);
+}
+
+.speedLimitBadge {
+  width: 32px; height: 32px;
+  border-radius: 50%;
+  background: white;
+  border: 3px solid var(--red);
+  display: flex; align-items: center; justify-content: center;
+  margin-top: 4px;
+}
+.speedLimitNum {
+  font-family: var(--font-hud);
+  font-size: 11px;
+  font-weight: 900;
+  color: #000;
+  line-height: 1;
+}
+
+/* ── Bottom trip bar ──────────────────────────────────────────────────── */
+.bottomBar {
+  position: absolute;
+  bottom: 0; left: 0; right: 0;
+  z-index: 50;
+  background: rgba(6,8,16,0.97);
+  border-top: 0.5px solid var(--border-subtle);
+  padding-bottom: var(--safe-bottom);
+  display: flex;
+  align-items: stretch;
+  height: calc(74px + var(--safe-bottom));
+  backdrop-filter: blur(20px);
+}
+
+.tripStat, .tripAction {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 3px;
+  cursor: pointer;
+  background: none;
+  border: none;
+  color: inherit;
+  transition: background 0.15s;
+}
+.tripAction:active { background: rgba(255,255,255,0.04); }
+
+.tripValue {
+  font-family: var(--font-hud);
+  font-size: 24px;
+  font-weight: 800;
+  color: var(--text-primary);
+  line-height: 1;
+}
+.tripLabel {
+  font-family: var(--font-ui);
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  color: var(--text-muted);
+}
+
+.tripDivider {
+  width: 0.5px;
+  background: var(--border-subtle);
+  margin: 12px 0;
+}
+
+.aiQuickBtn {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  background: none;
+  border: none;
+  cursor: pointer;
+  transition: all 0.15s;
+}
+.aiQuickBtn:active { background: rgba(0,212,255,0.05); }
+
+.aiQuickOrb {
+  width: 28px; height: 28px;
+  border-radius: 50%;
+  background: var(--accent-dim);
+  border: 1px solid rgba(0,212,255,0.4);
+  position: relative;
+}
+.aiQuickOrb::after {
+  content: '✦';
+  position: absolute;
+  inset: 0;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 11px;
+  color: var(--accent);
+}

@@ -1,0 +1,107 @@
+.canvas {
+  position: absolute;
+  inset: 0;
+  z-index: 60;
+  cursor: crosshair;
+  touch-action: none;
+}
+
+.hint {
+  position: absolute;
+  top: calc(var(--safe-top) + 72px);
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 65;
+  background: var(--bg-overlay);
+  border: 0.5px solid var(--border-soft);
+  border-radius: var(--r-pill);
+  padding: 10px 20px;
+  font-family: var(--font-ui);
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--text-primary);
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  white-space: nowrap;
+  backdrop-filter: blur(12px);
+  box-shadow: 0 4px 20px rgba(0,0,0,0.5);
+}
+
+.processingDot {
+  width: 8px; height: 8px;
+  border-radius: 50%;
+  background: var(--accent);
+  animation: dot-pulse 0.8s ease-in-out infinite;
+}
+@keyframes dot-pulse {
+  0%, 100% { opacity: 1; transform: scale(1); }
+  50%       { opacity: 0.4; transform: scale(0.7); }
+}
+
+.doneCheck { color: var(--green); font-weight: 700; font-size: 15px; }
+.errorX    { color: var(--red);   font-weight: 700; font-size: 15px; }
+
+/* Toolbar */
+.toolbar {
+  position: absolute;
+  bottom: calc(var(--safe-bottom) + 32px);
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 65;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  background: var(--bg-surface);
+  border: 0.5px solid var(--border-soft);
+  border-radius: var(--r-xl);
+  padding: 12px 16px;
+  box-shadow: 0 8px 40px rgba(0,0,0,0.7);
+  backdrop-filter: blur(20px);
+}
+
+.toolBtn {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 3px;
+  background: var(--bg-elevated);
+  border: 0.5px solid var(--border-subtle);
+  border-radius: var(--r-md);
+  width: 54px; height: 54px;
+  color: var(--text-primary);
+  cursor: pointer;
+  font-family: var(--font-ui);
+  font-size: 10px;
+  font-weight: 600;
+  transition: all 0.15s;
+  justify-content: center;
+}
+.toolBtn:disabled { opacity: 0.3; cursor: default; }
+.toolBtn:not(:disabled):active { transform: scale(0.92); }
+
+.primaryBtn {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  padding: 0 20px;
+  height: 54px;
+  background: var(--accent);
+  color: #000;
+  border: none;
+  border-radius: var(--r-md);
+  font-family: var(--font-ui);
+  font-size: 14px;
+  font-weight: 700;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: all 0.15s;
+  box-shadow: 0 0 20px var(--accent-glow);
+}
+.primaryBtn.disabled { opacity: 0.4; cursor: default; }
+.primaryBtn:not(.disabled):active { transform: scale(0.95); }
+
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+.spin { animation: spin 0.8s linear infinite; }

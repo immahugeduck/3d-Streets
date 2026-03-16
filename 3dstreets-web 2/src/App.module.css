@@ -1,0 +1,70 @@
+.app {
+  position: relative;
+  width: 100%; height: 100%;
+  overflow: hidden;
+  background: var(--bg-void);
+}
+
+.backdrop {
+  position: absolute; inset: 0; z-index: 75;
+  background: rgba(0,0,0,0.55);
+  backdrop-filter: blur(2px);
+}
+
+.settingsPanel {
+  position: absolute; bottom: 0; left: 0; right: 0; z-index: 80;
+  background: var(--bg-surface);
+  border-radius: var(--r-xl) var(--r-xl) 0 0;
+  border-top: 0.5px solid var(--border-soft);
+  box-shadow: 0 -8px 40px rgba(0,0,0,0.8);
+  padding-bottom: calc(var(--safe-bottom) + 16px);
+}
+
+.handle { width: 36px; height: 4px; background: var(--border-soft); border-radius: 2px; margin: 10px auto 0; }
+
+.settingsHeader {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 14px 20px 12px;
+}
+.settingsTitle { font-family: var(--font-ui); font-size: 20px; font-weight: 800; color: var(--text-primary); }
+.settingsClose { width: 32px; height: 32px; border-radius: 50%; background: var(--bg-elevated); border: 0.5px solid var(--border-subtle); color: var(--text-secondary); font-size: 12px; cursor: pointer; display: flex; align-items: center; justify-content: center; }
+
+.settingsBody { padding: 8px 0 0; }
+
+.section { padding: 12px 20px; border-top: 0.5px solid var(--border-subtle); }
+.sectionLabel { font-family: var(--font-ui); font-size: 10px; font-weight: 700; letter-spacing: 0.12em; color: var(--text-muted); margin-bottom: 12px; }
+
+/* Style grid */
+.styleGrid { display: grid; grid-template-columns: repeat(5, 1fr); gap: 8px; }
+.styleCard {
+  display: flex; flex-direction: column; align-items: center; gap: 5px;
+  padding: 10px 4px;
+  background: var(--bg-elevated); border: 1px solid var(--border-subtle);
+  border-radius: var(--r-md); cursor: pointer; transition: all 0.15s;
+}
+.styleCard:active { transform: scale(0.94); }
+.styleCardActive { background: var(--accent-dim); border-color: var(--accent-glow); }
+.styleCardIcon { font-size: 22px; }
+.styleCardLabel { font-family: var(--font-ui); font-size: 10px; font-weight: 600; color: var(--text-secondary); }
+.styleCardActive .styleCardLabel { color: var(--accent); }
+
+/* Toggles */
+.toggleRow { display: flex; align-items: center; justify-content: space-between; padding: 10px 0; border-bottom: 0.5px solid var(--border-subtle); }
+.toggleRow:last-child { border-bottom: none; }
+.toggleLabel { font-family: var(--font-ui); font-size: 15px; font-weight: 500; color: var(--text-primary); }
+
+.toggle {
+  width: 48px; height: 28px; border-radius: 14px;
+  background: var(--bg-elevated); border: 1px solid var(--border-subtle);
+  position: relative; cursor: pointer; transition: all 0.2s;
+}
+.toggleOn { background: var(--accent); border-color: var(--accent); }
+.toggleThumb {
+  position: absolute; top: 3px; left: 3px;
+  width: 20px; height: 20px; border-radius: 50%;
+  background: var(--text-muted);
+  transition: all 0.2s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+.toggleOn .toggleThumb { transform: translateX(20px); background: #000; }
+
+.appVersion { font-family: var(--font-ui); font-size: 11px; color: var(--text-muted); text-align: center; padding: 16px 20px 4px; }
