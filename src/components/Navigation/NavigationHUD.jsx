@@ -35,21 +35,25 @@ function speedState(mph, limit) {
 }
 
 export default function NavigationHUD() {
-  const endNavigation    = useStore(s => s.endNavigation)
-  const routeSteps       = useStore(s => s.routeSteps)
-  const currentStepIndex = useStore(s => s.currentStepIndex)
-  const eta              = useStore(s => s.eta)
-  const remainingDist    = useStore(s => s.remainingDist)
-  const speedMPH         = useStore(s => s.speedMPH)
-  const speedLimit       = useStore(s => s.speedLimit)
-  const showSpeedHUD     = useStore(s => s.showSpeedHUD)
-  const openAI           = useStore(s => s.openAI)
-  const setShowWaypoints = useStore(s => s.setShowWaypoints)
-  const rerouteAvailable = useStore(s => s.rerouteAvailable)
-  const rerouteTimeSave  = useStore(s => s.rerouteTimeSave)
-  const setRerouteAvail  = useStore(s => s.setRerouteAvailable)
-  const waypoints        = useStore(s => s.waypoints)
-  const destination      = useStore(s => s.destination)
+  const endNavigation     = useStore(s => s.endNavigation)
+  const routeSteps        = useStore(s => s.routeSteps)
+  const currentStepIndex  = useStore(s => s.currentStepIndex)
+  const eta               = useStore(s => s.eta)
+  const remainingDist     = useStore(s => s.remainingDist)
+  const speedMPH          = useStore(s => s.speedMPH)
+  const speedLimit        = useStore(s => s.speedLimit)
+  const showSpeedHUD      = useStore(s => s.showSpeedHUD)
+  const openAI            = useStore(s => s.openAI)
+  const setShowWaypoints  = useStore(s => s.setShowWaypoints)
+  const rerouteAvailable  = useStore(s => s.rerouteAvailable)
+  const rerouteTimeSave   = useStore(s => s.rerouteTimeSave)
+  const setRerouteAvail   = useStore(s => s.setRerouteAvailable)
+  const waypoints         = useStore(s => s.waypoints)
+  const destination       = useStore(s => s.destination)
+  const setShowRouteStops = useStore(s => s.setShowRouteStops)
+  const setShowNavSidebar = useStore(s => s.setShowNavSidebar)
+
+  const totalStops = waypoints.length + (destination ? 1 : 0)
 
   const step = routeSteps[currentStepIndex]
   const nextStep = routeSteps[currentStepIndex + 1]
@@ -99,6 +103,15 @@ export default function NavigationHUD() {
 
         {/* End nav */}
         <button className={styles.endBtn} onClick={endNavigation}>✕</button>
+
+        {/* Sidebar toggle */}
+        <button
+          className={styles.sidebarBtn}
+          onClick={() => setShowNavSidebar(true)}
+          aria-label="Open navigation sidebar"
+        >
+          ☰
+        </button>
       </motion.div>
 
       {/* ── Reroute banner ────────────────────────────────────────────── */}
@@ -162,8 +175,8 @@ export default function NavigationHUD() {
 
         <div className={styles.tripDivider} />
 
-        <button className={styles.tripAction} onClick={() => setShowWaypoints(true)}>
-          <div className={styles.tripValue}>{waypoints.length}</div>
+        <button className={styles.tripAction} onClick={() => setShowRouteStops(true)}>
+          <div className={styles.tripValue}>{totalStops}</div>
           <div className={styles.tripLabel}>STOPS</div>
         </button>
 

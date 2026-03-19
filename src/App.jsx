@@ -2,24 +2,28 @@ import { AnimatePresence, motion } from 'framer-motion'
 import useStore, { PHASE, MAP_STYLES } from './store/appStore'
 import { useLocation } from './hooks/useLocation'
 
-import MapView           from './components/Map/MapView'
-import SearchBar         from './components/Search/SearchBar'
-import MapControls       from './components/Controls/MapControls'
-import NavigationHUD     from './components/Navigation/NavigationHUD'
-import RoutePreviewPanel from './components/Navigation/RoutePreviewPanel'
-import AICopilot         from './components/AI/AICopilot'
-import SketchOverlay     from './components/Sketch/SketchOverlay'
-import POIPanel          from './components/POI/POIPanel'
+import MapView            from './components/Map/MapView'
+import SearchBar          from './components/Search/SearchBar'
+import MapControls        from './components/Controls/MapControls'
+import NavigationHUD      from './components/Navigation/NavigationHUD'
+import RoutePreviewPanel  from './components/Navigation/RoutePreviewPanel'
+import RouteStopsPanel    from './components/Navigation/RouteStopsPanel'
+import NavigationSidebar  from './components/Navigation/NavigationSidebar'
+import AICopilot          from './components/AI/AICopilot'
+import SketchOverlay      from './components/Sketch/SketchOverlay'
+import POIPanel           from './components/POI/POIPanel'
 import './styles/design-system.css'
 import styles from './App.module.css'
 
 export default function App() {
   useLocation()
 
-  const phase           = useStore(s => s.phase)
-  const showPOI         = useStore(s => s.showPOI)
-  const showSettings    = useStore(s => s.showSettings)
-  const setShowSettings = useStore(s => s.setShowSettings)
+  const phase             = useStore(s => s.phase)
+  const showPOI           = useStore(s => s.showPOI)
+  const showSettings      = useStore(s => s.showSettings)
+  const setShowSettings   = useStore(s => s.setShowSettings)
+  const showRouteStops    = useStore(s => s.showRouteStops)
+  const showNavSidebar    = useStore(s => s.showNavSidebar)
 
   return (
     <div className={styles.app}>
@@ -50,6 +54,18 @@ export default function App() {
 
       <AnimatePresence>
         {showPOI && <POIPanel key="poi" />}
+      </AnimatePresence>
+
+      <AnimatePresence>
+        {phase === PHASE.NAVIGATING && showRouteStops && (
+          <RouteStopsPanel key="route-stops" />
+        )}
+      </AnimatePresence>
+
+      <AnimatePresence>
+        {phase === PHASE.NAVIGATING && showNavSidebar && (
+          <NavigationSidebar key="nav-sidebar" />
+        )}
       </AnimatePresence>
 
       <AnimatePresence>
