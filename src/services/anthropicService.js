@@ -1,5 +1,3 @@
-// ── Anthropic Claude API Service ──────────────────────────────────────────
-
 const ANTHROPIC_API_KEY = import.meta.env.VITE_ANTHROPIC_API_KEY || ''
 const API_URL = 'https://api.anthropic.com/v1/messages'
 const MODEL   = 'claude-3-5-haiku-20241022'
@@ -29,22 +27,34 @@ async function callClaude(systemPrompt, userMessage, maxTokens = 300) {
   }
 }
 
-// ── Parse natural-language destination query ──────────────────────────────
-export async function parseDestination(query, userLocation) {
+export async function parseDestination(query, userLocation, context = {}) {
   if (!query) return null
-  const system = `You are a navigation assistant. Parse the user's query and extract the destination name.
-Return JSON: {"destination": "<place name or address>"}
-If the query is unclear, make a reasonable guess. Only return the JSON object, nothing else.`
-  const text = await callClaude(system, query, 100)
+
+  const system = `You are a navigation assistant for a driving app.
+Extract the user's intent into JSON with this exact shape:
+{"destination": string|null, "waypoint": string|null}
+
+Rules:
+- Use "destination" when the user is setting or replacing the main destination.
+- Use "waypoint" when the user says add stop, stop at, swing by, or otherwise implies an extra stop.
+- If there is already an active route and the request sounds like a stop request, prefer waypoint.
+- Only return valid JSON. No markdown, no explanation.`
+
+  const ctx = context.hasActiveRoute ? 'There is already an active route.' : 'There is no active route yet.'
+  const text = await callClaude(system, `${ctx} User request: ${query}`, 120)
   if (!text) return null
+
   try {
-    return JSON.parse(text.trim())
+    const parsed = JSON.parse(text.trim())
+    return {
+      destination: parsed?.destination ?? null,
+      waypoint: parsed?.waypoint ?? null,
+    }
   } catch {
     return null
   }
 }
 
-// ── Generate AI trip summary ──────────────────────────────────────────────
 export async function generateTripSummary({ distance, duration, destination }) {
   const system = `You are a friendly navigation assistant. Write a short, one-sentence trip summary (max 20 words).
 Be concise and helpful. No markdown or emojis.`
@@ -52,18 +62,20 @@ Be concise and helpful. No markdown or emojis.`
   return callClaude(system, msg, 80)
 }
 
-// ── Navigation co-pilot ───────────────────────────────────────────────────
 export async function askCopilot(message, context = {}) {
-  const system = `You are a helpful navigation co-pilot for a 3D mapping app. 
+  const system = `You are a helpful navigation co-pilot for a 3D mapping app.
 You help users with routes, destinations, and points of interest.
-When suggesting a destination, prefix it with [DESTINATION: place name].
-When suggesting a waypoint, prefix it with [WAYPOINT: place name].
+When setting or replacing the main destination, prefix it with [DESTINATION: place name].
+When adding a stop to the current route, prefix it with [WAYPOINT: place name].
+You may return both a destination and one or more waypoints when appropriate.
 Keep responses short and conversational (under 80 words).`
-  const ctx = context.destination ? `Current destination: ${context.destination}. ` : ''
-  return callClaude(system, ctx + message, 200)
+
+  const ctxParts = []
+  if (context.destination) ctxParts.push(`Current destination: ${context.destination}.`)
+  if (context.hasActiveRoute) ctxParts.push('There is already an active route.')
+  return callClaude(system, `${ctxParts.join(' ')} ${message}`.trim(), 220)
 }
 
-// ── Search POI via AI ─────────────────────────────────────────────────────
 export async function searchPOIAI(category, location) {
   const system = `Suggest 3 real ${category} locations near the given coordinates.
 Return JSON array: [{"name": "...", "address": "..."}]
@@ -78,7 +90,6 @@ Only return the JSON array.`
   }
 }
 
-// ── Interpret sketch as route ─────────────────────────────────────────────
 export async function interpretSketch(sketchInfo) {
   const system = `You are a route interpreter. Given sketch information, suggest a brief route description.
 Return a short one-sentence description of what this route might be (max 15 words). No JSON, just plain text.`
