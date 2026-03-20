@@ -1,23 +1,31 @@
 import { useEffect, useRef } from 'react'
 import mapboxgl from 'mapbox-gl'
-import useStore, { MAP_STYLES } from '../../store/appStore'
+import useStore, { MAP_STYLES, PHASE } from '../../store/appStore'
 import styles from './MapView.module.css'
 
 mapboxgl.accessToken = import.meta.env.VITE_MAPBOX_TOKEN || ''
+
+const NAV_CAMERA = {
+  zoom: 17.2,
+  pitch: 72,
+  offset: [0, 170],
+  minUpdateMs: 350,
+}
 
 export default function MapView() {
   const containerRef = useRef(null)
   const mapRef = useRef(null)
   const userMarkerRef = useRef(null)
+  const lastCameraUpdateRef = useRef(0)
 
-  const setMapRef   = useStore(s => s.setMapRef)
-  const mapStyle    = useStore(s => s.mapStyle)
-  const is3D        = useStore(s => s.is3D)
-  const showTraffic = useStore(s => s.showTraffic)
+  const setMapRef    = useStore(s => s.setMapRef)
+  const mapStyle     = useStore(s => s.mapStyle)
+  const is3D         = useStore(s => s.is3D)
+  const showTraffic  = useStore(s => s.showTraffic)
   const userLocation = useStore(s => s.userLocation)
   const userHeading  = useStore(s => s.userHeading)
+  const phase        = useStore(s => s.phase)
 
-  // ── Init map ────────────────────────────────────────────────────────────
   useEffect(() => {
     if (mapRef.current) return
     const map = new mapboxgl.Map({
@@ -35,6 +43,7 @@ export default function MapView() {
       add3DBuildings(map)
       addTerrain(map)
       addTrafficLayers(map)
+      syncTrafficVisibility(map, showTraffic)
     })
 
     mapRef.current = map
@@ -47,7 +56,6 @@ export default function MapView() {
     }
   }, [])
 
-  // ── Style changes ────────────────────────────────────────────────────────
   useEffect(() => {
     const map = mapRef.current
     if (!map) return
@@ -56,17 +64,24 @@ export default function MapView() {
     map.once('style.load', () => {
       add3DBuildings(map)
       addTerrain(map)
+      addTrafficLayers(map)
+      syncTrafficVisibility(map, showTraffic)
     })
-  }, [mapStyle])
+  }, [mapStyle, showTraffic])
 
-  // ── 3D pitch toggle ──────────────────────────────────────────────────────
+  useEffect(() => {
+    const map = mapRef.current
+    if (!map || phase === PHASE.NAVIGATING) return
+    map.easeTo({ pitch: is3D ? 55 : 0, duration: 500 })
+  }, [is3D, phase])
+
   useEffect(() => {
     const map = mapRef.current
     if (!map) return
-    map.easeTo({ pitch: is3D ? 55 : 0, duration: 500 })
-  }, [is3D])
+    if (map.isStyleLoaded()) syncTrafficVisibility(map, showTraffic)
+    else map.once('style.load', () => syncTrafficVisibility(map, showTraffic))
+  }, [showTraffic])
 
-  // ── User location puck ───────────────────────────────────────────────────
   useEffect(() => {
     const map = mapRef.current
     if (!map || !userLocation) return
@@ -79,20 +94,44 @@ export default function MapView() {
     } else {
       userMarkerRef.current.setLngLat([userLocation.lng, userLocation.lat])
     }
+
     if (userHeading !== null) {
       userMarkerRef.current.setRotation(userHeading)
     }
   }, [userLocation, userHeading])
 
+  useEffect(() => {
+    const map = mapRef.current
+    if (!map || !userLocation) return
+    if (phase !== PHASE.NAVIGATING) return
+
+    const now = Date.now()
+    if (now - lastCameraUpdateRef.current < NAV_CAMERA.minUpdateMs) return
+    lastCameraUpdateRef.current = now
+
+    const bearing =
+      Number.isFinite(userHeading) && userHeading !== null
+        ? userHeading
+        : map.getBearing()
+
+    map.easeTo({
+      center: [userLocation.lng, userLocation.lat],
+      bearing,
+      zoom: Math.max(map.getZoom(), NAV_CAMERA.zoom),
+      pitch: NAV_CAMERA.pitch,
+      offset: NAV_CAMERA.offset,
+      duration: 550,
+      essential: true,
+    })
+  }, [phase, userLocation, userHeading])
+
   return <div ref={containerRef} className={styles.mapContainer} />
 }
-
-// ── Helpers ────────────────────────────────────────────────────────────────
 
 function add3DBuildings(map) {
   if (map.getLayer('3d-buildings')) return
   const layers = map.getStyle().layers
-  let labelLayerId = layers.find(l => l.type === 'symbol' && l.layout?.['text-field'])?.id
+  const labelLayerId = layers.find(l => l.type === 'symbol' && l.layout?.['text-field'])?.id
 
   map.addLayer({
     id: '3d-buildings',
@@ -147,6 +186,39 @@ function addTrafficLayers(map) {
       url: 'mapbox://mapbox.mapbox-traffic-v1',
     })
   }
+
+  if (!map.getLayer('traffic-line')) {
+    map.addLayer({
+      id: 'traffic-line',
+      type: 'line',
+      source: 'mapbox-traffic',
+      'source-layer': 'traffic',
+      minzoom: 8,
+      paint: {
+        'line-width': ['interpolate', ['linear'], ['zoom'], 8, 1.5, 14, 4.5, 18, 8],
+        'line-opacity': 0.85,
+        'line-color': [
+          'match',
+          ['get', 'congestion'],
+          'low', '#22c55e',
+          'moderate', '#f59e0b',
+          'heavy', '#ef4444',
+          'severe', '#b91c1c',
+          '#64748b',
+        ],
+      },
+      layout: {
+        'line-cap': 'round',
+        'line-join': 'round',
+        visibility: 'none',
+      },
+    })
+  }
+}
+
+function syncTrafficVisibility(map, showTraffic) {
+  if (!map.getLayer('traffic-line')) return
+  map.setLayoutProperty('traffic-line', 'visibility', showTraffic ? 'visible' : 'none')
 }
 
 function createUserPuck() {
@@ -178,8 +250,6 @@ function createUserPuck() {
   `
   return el
 }
-
-// ── Public map helpers (called from other components) ─────────────────────
 
 export function flyToUser() {
   const map = window._3dstreetsMap
