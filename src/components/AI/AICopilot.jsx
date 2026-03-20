@@ -14,7 +14,7 @@ const QUICK_PROMPTS = [
 
 export default function AICopilot() {
   const [messages, setMessages] = useState([
-    { role: 'assistant', text: 'Hi! I\\'m your AI co-pilot. Where would you like to go?' }
+    { role: 'assistant', text: "Hi! I'm your AI co-pilot. Where would you like to go?" }
   ])
   const [input, setInput] = useState('')
   const [loading, setLoading] = useState(false)
@@ -80,14 +80,14 @@ export default function AICopilot() {
 
       if (cleanReply) {
         setMessages(prev => [...prev, { role: 'assistant', text: cleanReply }])
-      } else if (destinationMatches.length || waypointMatches.length) {
+      } else if (destMatch || wpMatches.length) {
         const statusBits = []
-        if (destinationMatches.length) statusBits.push('destination updated')
-        if (waypointMatches.length) statusBits.push(`${waypointMatches.length} stop${waypointMatches.length > 1 ? 's' : ''} added`)
+        if (destMatch) statusBits.push('destination updated')
+        if (wpMatches.length) statusBits.push(`${wpMatches.length} stop${wpMatches.length > 1 ? 's' : ''} added`)
         setMessages(prev => [...prev, { role: 'assistant', text: `Done — ${statusBits.join(', ')}.` }])
       }
     } else {
-      setMessages(prev => [...prev, { role: 'assistant', text: 'Sorry, I couldn\\'t process that. Try asking again.' }])
+      setMessages(prev => [...prev, { role: 'assistant', text: "Sorry, I couldn't process that. Try asking again." }])
     }
 
     setLoading(false)
@@ -129,19 +129,19 @@ export default function AICopilot() {
 
         <div className={styles.messages}>
           {messages.map((msg, i) => (
-            <div key={i} className={`${styles.bubble} ${msg.role === 'user' ? styles.userBubble : styles.aiBubble}`}>
+            <div key={i} className={`${styles.bubble} ${msg.role === 'user' ? styles.userBubble : styles.aiBubble}`}>  
               {msg.text}
             </div>
           ))}
           {loading && (
-            <div className={`${styles.bubble} ${styles.aiBubble} ${styles.loadingBubble}`}>
+            <div className={`${styles.bubble} ${styles.aiBubble} ${styles.loadingBubble}`}> 
               <span className={styles.dot} /><span className={styles.dot} /><span className={styles.dot} />
             </div>
           )}
           <div ref={bottomRef} />
         </div>
 
-        <div className={styles.quickPrompts}>
+        <div className={styles.quickPrompts}>  
           {QUICK_PROMPTS.map(p => (
             <button key={p} className={styles.quickChip} onClick={() => send(p)}>{p}</button>
           ))}
