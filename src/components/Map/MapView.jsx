@@ -5,6 +5,9 @@ import styles from './MapView.module.css'
 
 mapboxgl.accessToken = import.meta.env.VITE_MAPBOX_TOKEN || ''
 
+// Module-level cache of drawn routes for redrawing after style changes
+let _drawnRoutes = []
+
 export default function MapView() {
   const containerRef = useRef(null)
   const mapRef = useRef(null)
@@ -56,6 +59,10 @@ export default function MapView() {
     map.once('style.load', () => {
       add3DBuildings(map)
       addTerrain(map)
+      // Redraw any previously drawn routes after style reload
+      _drawnRoutes.forEach(({ geojson, isAlternate }) => {
+        _applyRouteToMap(map, geojson, isAlternate)
+      })
     })
   }, [mapStyle])
 
@@ -193,6 +200,23 @@ export function flyToUser() {
 export function drawRoute(geojson, isAlternate = false) {
   const map = window._3dstreetsMap
   if (!map) return
+
+  // Update the cached routes list:
+  // - Primary route clears everything and becomes the sole cached entry
+  // - Alternate routes are appended after removing any previous alternates
+  if (!isAlternate) {
+    _drawnRoutes = [{ geojson, isAlternate: false }]
+  } else {
+    _drawnRoutes = [
+      ..._drawnRoutes.filter(r => !r.isAlternate),
+      { geojson, isAlternate: true },
+    ]
+  }
+
+  _applyRouteToMap(map, geojson, isAlternate)
+}
+
+function _applyRouteToMap(map, geojson, isAlternate = false) {
   const sourceId = isAlternate ? 'route-alt' : 'route-main'
   const glowId   = isAlternate ? null : 'route-glow'
   const layerId  = isAlternate ? 'route-layer-alt' : 'route-layer'
@@ -230,6 +254,7 @@ export function drawRoute(geojson, isAlternate = false) {
 
 export function clearRoute() {
   const map = window._3dstreetsMap
+  _drawnRoutes = []
   if (!map) return
   ;['route-layer', 'route-layer-alt', 'route-glow', 'route-main', 'route-alt',
     'sketch-layer', 'sketch-source'].forEach(id => {

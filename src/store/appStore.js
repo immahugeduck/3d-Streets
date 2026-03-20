@@ -100,7 +100,8 @@ const useStore = create((set, get) => ({
   routePref:    'fastest',
   routeOptions: [],
   selectedRoute: null,
-  setDestination:   (destination)   => set({ destination, phase: PHASE.ROUTE_PREVIEW }),
+  setDestination:     (destination) => set({ destination, phase: PHASE.ROUTE_PREVIEW }),
+  setDestinationOnly: (destination) => set({ destination }),
   setWaypoints:     (waypoints)     => set({ waypoints }),
   addWaypoint:      (wp)            => set(s => ({ waypoints: [...s.waypoints, wp] })),
   removeWaypoint:   (id)            => set(s => ({
@@ -171,6 +172,24 @@ const useStore = create((set, get) => ({
   exitSketch: () => set({ phase: PHASE.IDLE }),
 
   openAI: () => set({ phase: PHASE.AI_CHAT }),
+
+  // ── Saved route (Compass bookmark) ───────────────────────────────────
+  savedRoute: null,
+  saveCurrentRoute: () => {
+    const { destination, waypoints } = get()
+    if (!destination) return
+    set({ savedRoute: { destination, waypoints: [...waypoints] } })
+  },
+  restoreSavedRoute: () => {
+    const { savedRoute } = get()
+    if (!savedRoute) return
+    set({
+      destination:  savedRoute.destination,
+      waypoints:    savedRoute.waypoints,
+      phase:        PHASE.ROUTE_PREVIEW,
+    })
+  },
+  clearSavedRoute: () => set({ savedRoute: null }),
 
   // ── Helper: get all stops in order ───────────────────────────────────
   getAllStops: () => {

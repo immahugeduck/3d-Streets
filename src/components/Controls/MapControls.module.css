@@ -22,6 +22,7 @@
   transition: all 0.15s;
   font-family: var(--font-ui);
   -webkit-tap-highlight-color: transparent;
+  position: relative;
 }
 .btn:active { transform: scale(0.9); }
 .btn.accent { border-color: var(--accent-glow); box-shadow: 0 0 14px var(--accent-glow), 0 4px 16px rgba(0,0,0,0.5); color: var(--accent); }
@@ -59,4 +60,15 @@
 .aiOrb {
   width: 18px; height: 18px; border-radius: 50%;
   background: var(--accent); box-shadow: 0 0 10px var(--accent-glow);
+}
+
+/* Compass button saved-route indicator */
+.savedDot {
+  position: absolute;
+  top: 6px; right: 6px;
+  width: 8px; height: 8px;
+  border-radius: 50%;
+  background: var(--accent);
+  box-shadow: 0 0 6px var(--accent-glow);
+  pointer-events: none;
 }

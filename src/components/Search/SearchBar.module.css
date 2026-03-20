@@ -174,6 +174,28 @@
 .resultAddr { font-family: var(--font-ui); font-size: 12px; color: var(--text-secondary); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; margin-top: 1px; }
 .resultDist { font-family: var(--font-ui); font-size: 12px; color: var(--text-muted); flex-shrink: 0; }
 
+.stopHint {
+  padding: 8px 16px 4px;
+  border-bottom: none;
+}
+
+.addStopBtn {
+  flex-shrink: 0;
+  width: 30px; height: 30px;
+  border-radius: 50%;
+  background: var(--accent-dim);
+  border: 0.5px solid rgba(0,212,255,0.4);
+  color: var(--accent);
+  font-size: 18px;
+  font-weight: 700;
+  line-height: 1;
+  display: flex; align-items: center; justify-content: center;
+  cursor: pointer;
+  transition: all 0.15s;
+  margin-left: 4px;
+}
+.addStopBtn:active { transform: scale(0.9); background: var(--accent); color: #000; }
+
 .aiHint {
   display: flex; align-items: center; gap: 8px;
   padding: 12px 16px;

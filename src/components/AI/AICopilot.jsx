@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect } from 'react'
-import { motion, AnimatePresence } from 'framer-motion'
+import { motion } from 'framer-motion'
 import useStore, { PHASE } from '../../store/appStore'
 import { askCopilot } from '../../services/anthropicService'
 import { searchPlaces } from '../../services/mapboxService'
@@ -20,12 +20,13 @@ export default function AICopilot() {
   const [loading, setLoading] = useState(false)
   const bottomRef = useRef(null)
 
-  const setPhase       = useStore(s => s.setPhase)
-  const phase          = useStore(s => s.phase)
-  const destination    = useStore(s => s.destination)
-  const setDestination = useStore(s => s.setDestination)
-  const addWaypoint    = useStore(s => s.addWaypoint)
-  const userLocation   = useStore(s => s.userLocation)
+  const setPhase           = useStore(s => s.setPhase)
+  const phase              = useStore(s => s.phase)
+  const destination        = useStore(s => s.destination)
+  const setDestinationOnly = useStore(s => s.setDestinationOnly)
+  const addWaypoint        = useStore(s => s.addWaypoint)
+  const waypoints          = useStore(s => s.waypoints)
+  const userLocation       = useStore(s => s.userLocation)
 
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: 'smooth' })
@@ -38,23 +39,37 @@ export default function AICopilot() {
     setMessages(prev => [...prev, { role: 'user', text: userMsg }])
     setLoading(true)
 
-    const context = { destination: destination?.name }
+    const context = {
+      destination: destination?.name,
+      waypoints,
+    }
     const reply = await askCopilot(userMsg, context)
 
     if (reply) {
       // Parse DESTINATION tag
       const destMatch = reply.match(/\[DESTINATION:\s*([^\]]+)\]/i)
-      const wpMatch   = reply.match(/\[WAYPOINT:\s*([^\]]+)\]/i)
+      // Parse ALL WAYPOINT tags
+      const wpMatches = [...reply.matchAll(/\[WAYPOINT:\s*([^\]]+)\]/gi)]
 
       if (destMatch) {
-        const places = await searchPlaces(destMatch[1], userLocation)
+        const places = await searchPlaces(destMatch[1].trim(), userLocation)
         if (places[0]) {
-          setDestination(places[0])
-          setPhase(PHASE.ROUTE_PREVIEW)
+          // Set destination without changing phase yet; we'll transition after all stops are added
+          setDestinationOnly(places[0])
         }
-      } else if (wpMatch) {
-        const places = await searchPlaces(wpMatch[1], userLocation)
+      }
+
+      // Handle all waypoint tags – resolve searches in parallel for speed
+      const wpResults = await Promise.all(
+        wpMatches.map(wpMatch => searchPlaces(wpMatch[1].trim(), userLocation))
+      )
+      wpResults.forEach(places => {
         if (places[0]) addWaypoint(places[0])
+      })
+
+      // Transition to route preview after all stops are resolved
+      if (destMatch) {
+        setPhase(PHASE.ROUTE_PREVIEW)
       }
 
       const cleanReply = reply
@@ -72,7 +87,12 @@ export default function AICopilot() {
   }
 
   function close() {
-    setPhase(PHASE.IDLE)
+    // Return to route preview if a destination is active, otherwise go idle
+    if (destination) {
+      setPhase(PHASE.ROUTE_PREVIEW)
+    } else {
+      setPhase(PHASE.IDLE)
+    }
   }
 
   return (

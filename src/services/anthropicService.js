@@ -54,13 +54,29 @@ Be concise and helpful. No markdown or emojis.`
 
 // ── Navigation co-pilot ───────────────────────────────────────────────────
 export async function askCopilot(message, context = {}) {
-  const system = `You are a helpful navigation co-pilot for a 3D mapping app. 
-You help users with routes, destinations, and points of interest.
-When suggesting a destination, prefix it with [DESTINATION: place name].
-When suggesting a waypoint, prefix it with [WAYPOINT: place name].
-Keep responses short and conversational (under 80 words).`
-  const ctx = context.destination ? `Current destination: ${context.destination}. ` : ''
-  return callClaude(system, ctx + message, 200)
+  const system = `You are a helpful navigation co-pilot for a 3D mapping app.
+You help users plan routes, add destinations, and add stops along the way.
+
+CRITICAL RULES – always follow these:
+1. When the user wants to navigate TO a place or asks for a route to somewhere, you MUST emit exactly one tag like [DESTINATION: place name or address].
+2. When the user wants to add a stop, waypoint, or detour along the route, emit one or more tags like [WAYPOINT: place name].
+3. You can emit BOTH a [DESTINATION:] tag and one or more [WAYPOINT:] tags in the same response when the user describes a full trip with stops.
+4. Use the exact place name or address the user mentions (do not paraphrase it).
+5. Keep conversational text short (under 80 words). Put action tags at the end of your reply.
+
+Examples:
+- "Take me to Central Park" → reply text + [DESTINATION: Central Park]
+- "Route to LAX with a coffee stop" → reply text + [DESTINATION: LAX Airport] [WAYPOINT: Starbucks]
+- "Add a stop at Walmart" → reply text + [WAYPOINT: Walmart]
+- "Stop at McDonald's and then Costco on the way" → reply text + [WAYPOINT: McDonald's] [WAYPOINT: Costco]`
+
+  const parts = []
+  if (context.destination) parts.push(`Current destination: ${context.destination}.`)
+  if (context.waypoints?.length) {
+    parts.push(`Current stops: ${context.waypoints.map(w => w.name).join(', ')}.`)
+  }
+  const ctx = parts.length ? parts.join(' ') + '\n' : ''
+  return callClaude(system, ctx + message, 250)
 }
 
 // ── Search POI via AI ─────────────────────────────────────────────────────

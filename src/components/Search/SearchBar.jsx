@@ -25,6 +25,8 @@ export default function SearchBar() {
 
   const setPhase       = useStore(s => s.setPhase)
   const setDestination = useStore(s => s.setDestination)
+  const addWaypoint    = useStore(s => s.addWaypoint)
+  const destination    = useStore(s => s.destination)
   const openAI         = useStore(s => s.openAI)
   const setShowSettings = useStore(s => s.setShowSettings)
   const setShowPOI     = useStore(s => s.setShowPOI)
@@ -34,6 +36,8 @@ export default function SearchBar() {
 
   // Don't show search when navigating
   if (phase === PHASE.NAVIGATING || phase === PHASE.SKETCHING) return null
+
+  const hasActiveRoute = !!destination
 
   const doSearch = useCallback(async (q) => {
     if (q.length < 2) { setResults([]); return }
@@ -67,6 +71,15 @@ export default function SearchBar() {
   function selectResult(result) {
     setDestination(result)
     setPhase(PHASE.ROUTE_PREVIEW)
+    setQuery('')
+    setResults([])
+    setFocused(false)
+    inputRef.current?.blur()
+  }
+
+  function addResultAsStop(result, e) {
+    e.stopPropagation()
+    addWaypoint(result)
     setQuery('')
     setResults([])
     setFocused(false)
@@ -108,7 +121,7 @@ export default function SearchBar() {
             onChange={onInput}
             onKeyDown={onKeyDown}
             onFocus={() => setFocused(true)}
-            placeholder="Where to?"
+            placeholder={hasActiveRoute ? 'Search or add a stop…' : 'Where to?'}
             autoComplete="off"
             autoCorrect="off"
             spellCheck="false"
@@ -162,6 +175,9 @@ export default function SearchBar() {
             {/* Results */}
             {results.length > 0 && (
               <div className={styles.results}>
+                {hasActiveRoute && (
+                  <div className={`${styles.sectionLabel} ${styles.stopHint}`}>TAP TO SET DESTINATION · + TO ADD STOP</div>
+                )}
                 {results.map((r, i) => (
                   <button key={r.id} className={styles.resultRow} onClick={() => selectResult(r)}>
                     <div className={styles.resultIcon}>
@@ -173,6 +189,15 @@ export default function SearchBar() {
                     </div>
                     {r.distance && (
                       <div className={styles.resultDist}>{formatDist(r.distance)}</div>
+                    )}
+                    {hasActiveRoute && (
+                      <button
+                        className={styles.addStopBtn}
+                        onClick={(e) => addResultAsStop(r, e)}
+                        title="Add as stop"
+                      >
+                        +
+                      </button>
                     )}
                   </button>
                 ))}

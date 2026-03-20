@@ -7,17 +7,47 @@ import styles from './MapControls.module.css'
 export default function MapControls() {
   const [showStyles, setShowStyles] = useState(false)
 
-  const phase          = useStore(s => s.phase)
-  const mapStyle       = useStore(s => s.mapStyle)
-  const setMapStyle    = useStore(s => s.setMapStyle)
-  const is3D           = useStore(s => s.is3D)
-  const setIs3D        = useStore(s => s.setIs3D)
-  const enterSketch    = useStore(s => s.enterSketch)
-  const setShowPOI     = useStore(s => s.setShowPOI)
-  const openAI         = useStore(s => s.openAI)
+  const phase             = useStore(s => s.phase)
+  const mapStyle          = useStore(s => s.mapStyle)
+  const setMapStyle       = useStore(s => s.setMapStyle)
+  const is3D              = useStore(s => s.is3D)
+  const setIs3D           = useStore(s => s.setIs3D)
+  const enterSketch       = useStore(s => s.enterSketch)
+  const setShowPOI        = useStore(s => s.setShowPOI)
+  const openAI            = useStore(s => s.openAI)
+  const destination       = useStore(s => s.destination)
+  const savedRoute        = useStore(s => s.savedRoute)
+  const saveCurrentRoute  = useStore(s => s.saveCurrentRoute)
+  const restoreSavedRoute = useStore(s => s.restoreSavedRoute)
+  const clearSavedRoute   = useStore(s => s.clearSavedRoute)
 
   // Hide during navigation/sketch
   if (phase === PHASE.NAVIGATING || phase === PHASE.SKETCHING) return null
+
+  function handleCompass() {
+    if (destination) {
+      // Save current route if not already saved, or clear if same route is saved
+      if (savedRoute && savedRoute.destination?.id === destination.id) {
+        clearSavedRoute()
+      } else {
+        saveCurrentRoute()
+      }
+    } else if (savedRoute) {
+      // Restore the previously saved route
+      restoreSavedRoute()
+    }
+  }
+
+  const routeIsSaved = savedRoute &&
+    destination &&
+    savedRoute.destination?.id === destination.id
+
+  function getCompassTitle() {
+    if (routeIsSaved) return 'Route saved – tap to unsave'
+    if (destination) return 'Save this route'
+    if (savedRoute) return `Restore: ${savedRoute.destination?.name ?? 'saved route'}`
+    return 'No route to save'
+  }
 
   return (
     <div className={styles.rail}>
@@ -60,6 +90,18 @@ export default function MapControls() {
         </AnimatePresence>
       </div>
 
+      {/* Compass – save / restore route */}
+      <button
+        className={`${styles.btn} ${routeIsSaved ? styles.active : ''} ${!destination && savedRoute ? styles.accent : ''}`}
+        onClick={handleCompass}
+        title={getCompassTitle()}
+      >
+        <CompassIcon />
+        {savedRoute && !destination && (
+          <span className={styles.savedDot} />
+        )}
+      </button>
+
       {/* Sketch */}
       <button className={styles.btn} onClick={enterSketch} title="Draw route">
         <PencilIcon />
@@ -82,3 +124,4 @@ const LocateIcon  = () => <svg width="18" height="18" fill="none" stroke="curren
 const LayersIcon  = () => <svg width="18" height="18" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" viewBox="0 0 24 24"><polygon points="12 2 2 7 12 12 22 7 12 2"/><polyline points="2 17 12 22 22 17"/><polyline points="2 12 12 17 22 12"/></svg>
 const PencilIcon  = () => <svg width="18" height="18" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" viewBox="0 0 24 24"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
 const SearchIcon  = () => <svg width="18" height="18" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
+const CompassIcon = () => <svg width="18" height="18" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><polygon points="16.24 7.76 14.12 14.12 7.76 16.24 9.88 9.88 16.24 7.76"/></svg>
