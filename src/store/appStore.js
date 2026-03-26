@@ -74,9 +74,11 @@ export const ROUTE_PREFS = {
 
 // ── Store ─────────────────────────────────────────────────────────────────
 const useStore = create((set, get) => ({
+
   // ── App phase ─────────────────────────────────────────────────────────
-  phase: PHASE.IDLE,
-  setPhase: (phase) => set({ phase }),
+  phase:     PHASE.IDLE,
+  prevPhase: PHASE.IDLE,
+  setPhase:  (phase) => set({ phase }),
 
   // ── Map config ────────────────────────────────────────────────────────
   mapStyle:    'dark',
@@ -95,21 +97,62 @@ const useStore = create((set, get) => ({
   setUserHeading:  (userHeading)  => set({ userHeading }),
 
   // ── Route planning ────────────────────────────────────────────────────
-  destination:  null,
-  waypoints:    [],
-  routePref:    'fastest',
-  routeOptions: [],
+  destination:   null,
+  waypoints:     [],
+  routePref:     'fastest',
+  routeOptions:  [],
   selectedRoute: null,
   setDestination:     (destination) => set({ destination, phase: PHASE.ROUTE_PREVIEW }),
   setDestinationOnly: (destination) => set({ destination }),
-  setWaypoints:     (waypoints)     => set({ waypoints }),
-  addWaypoint:      (wp)            => set(s => ({ waypoints: [...s.waypoints, wp] })),
-  removeWaypoint:   (id)            => set(s => ({
+  setWaypoints:       (waypoints)   => set({ waypoints }),
+  addWaypoint:        (wp)          => set(s => ({ waypoints: [...s.waypoints, wp] })),
+  removeWaypoint:     (id)          => set(s => ({
     waypoints: s.waypoints.filter(w => w.id !== id),
   })),
   setRoutePref:     (routePref)     => set({ routePref }),
   setRouteOptions:  (routeOptions)  => set({ routeOptions }),
   setSelectedRoute: (selectedRoute) => set({ selectedRoute }),
+
+  // ── Route locking ─────────────────────────────────────────────────────
+  // When locked: deviation warnings are suppressed, no auto-reroute prompt
+  routeLocked: false,
+  setRouteLocked:  (routeLocked) => set({ routeLocked }),
+  toggleRouteLock: () => set(s => ({
+    routeLocked:      !s.routeLocked,
+    // Dismiss any pending reroute banner when user locks the route
+    rerouteAvailable: s.routeLocked ? s.rerouteAvailable : false,
+    rerouteTimeSave:  s.routeLocked ? s.rerouteTimeSave  : '',
+  })),
+
+  // ── Multi-leg navigation ──────────────────────────────────────────────
+  // currentLegIndex: which stop we're currently heading toward (0 = first stop/destination)
+  // legStats: per-leg distance + ETA breakdown set when route loads
+  currentLegIndex: 0,
+  legStats: [],       // [{ distanceLabel, durationLabel, distance, duration }]
+  setLegStats: (legStats) => set({ legStats }),
+  advanceLeg: () => {
+    const { currentLegIndex, getAllStops } = get()
+    const stops = getAllStops()
+    const next  = currentLegIndex + 1
+
+    if (next >= stops.length) {
+      // Completed all legs — end navigation
+      set({
+        phase:            PHASE.IDLE,
+        routeSteps:       [],
+        currentStepIndex: 0,
+        currentLegIndex:  0,
+        legStats:         [],
+        rerouteAvailable: false,
+        showRouteStops:   false,
+        showNavSidebar:   false,
+        selectedStop:     null,
+        routeLocked:      false,
+      })
+    } else {
+      set({ currentLegIndex: next })
+    }
+  },
 
   // ── Navigation state ──────────────────────────────────────────────────
   routeSteps:       [],
@@ -132,12 +175,12 @@ const useStore = create((set, get) => ({
     set({ rerouteAvailable, rerouteTimeSave }),
 
   // ── Panel visibility ──────────────────────────────────────────────────
-  showPOI:         false,
-  showSettings:    false,
-  showWaypoints:   false,
-  showRouteStops:  false,
-  showNavSidebar:  false,
-  poiCategory:     'food',
+  showPOI:        false,
+  showSettings:   false,
+  showWaypoints:  false,
+  showRouteStops: false,
+  showNavSidebar: false,
+  poiCategory:    'food',
   setShowPOI:        (showPOI)        => set({ showPOI }),
   setShowSettings:   (showSettings)   => set({ showSettings }),
   setShowWaypoints:  (showWaypoints)  => set({ showWaypoints }),
@@ -153,25 +196,31 @@ const useStore = create((set, get) => ({
   startNavigation: () => set({
     phase:            PHASE.NAVIGATING,
     currentStepIndex: 0,
+    currentLegIndex:  0,
     showRouteStops:   false,
     showNavSidebar:   false,
+    routeLocked:      false,
   }),
 
   endNavigation: () => set({
     phase:            PHASE.IDLE,
     routeSteps:       [],
     currentStepIndex: 0,
+    currentLegIndex:  0,
+    legStats:         [],
     rerouteAvailable: false,
     showRouteStops:   false,
     showNavSidebar:   false,
     selectedStop:     null,
+    routeLocked:      false,
   }),
 
   enterSketch: () => set({ phase: PHASE.SKETCHING }),
+  exitSketch:  () => set({ phase: PHASE.IDLE }),
 
-  exitSketch: () => set({ phase: PHASE.IDLE }),
-
-  openAI: () => set({ phase: PHASE.AI_CHAT }),
+  // Track prevPhase so AICopilot can return to the right state on close
+  openAI: () => set(s => ({ prevPhase: s.phase, phase: PHASE.AI_CHAT })),
+  closeAI: () => set(s => ({ phase: s.prevPhase || PHASE.IDLE })),
 
   // ── Saved route (Compass bookmark) ───────────────────────────────────
   savedRoute: null,
@@ -184,20 +233,21 @@ const useStore = create((set, get) => ({
     const { savedRoute } = get()
     if (!savedRoute) return
     set({
-      destination:  savedRoute.destination,
-      waypoints:    savedRoute.waypoints,
-      phase:        PHASE.ROUTE_PREVIEW,
+      destination: savedRoute.destination,
+      waypoints:   savedRoute.waypoints,
+      phase:       PHASE.ROUTE_PREVIEW,
     })
   },
   clearSavedRoute: () => set({ savedRoute: null }),
 
   // ── Helper: get all stops in order ───────────────────────────────────
+  // Returns [waypoint1, waypoint2, ..., destination]
   getAllStops: () => {
     const { waypoints, destination } = get()
     const stops = waypoints.map((wp, i) => ({
       ...wp,
-      index:    i + 1,
-      isFinal:  false,
+      index:   i + 1,
+      isFinal: false,
     }))
     if (destination) {
       stops.push({
@@ -212,3 +262,5 @@ const useStore = create((set, get) => ({
 }))
 
 export default useStore
+
+cat > src/components/Map/MapView.jsx
