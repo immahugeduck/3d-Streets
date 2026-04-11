@@ -6,8 +6,12 @@ const TOKEN = import.meta.env.VITE_MAPBOX_TOKEN || ''
 export async function searchPlaces(query, proximity = null) {
   if (!query || query.length < 2) return []
   const encoded = encodeURIComponent(query)
-  const prox = proximity ? `&proximity=${proximity.lng},${proximity.lat}` : ''
-  const url = `https://api.mapbox.com/geocoding/v5/mapbox.places/${encoded}.json?access_token=${TOKEN}&limit=6&country=US&types=poi,address,place${prox}`
+  // Only bias by proximity when query is short (<=3 words) AND looks purely local
+  // (no city/state context). This lets "Walmart Nashville TN" find out-of-state results.
+  const words = query.trim().split(/\s+/)
+  const hasLocationContext = words.length > 2
+  const prox = (proximity && !hasLocationContext) ? `&proximity=${proximity.lng},${proximity.lat}` : ''
+  const url = `https://api.mapbox.com/geocoding/v5/mapbox.places/${encoded}.json?access_token=${TOKEN}&limit=8&types=poi,address,place${prox}`
 
   try {
     const res = await fetch(url)

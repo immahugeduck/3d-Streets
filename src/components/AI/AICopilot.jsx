@@ -1,6 +1,6 @@
 import { useState, useRef, useEffect } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
-import useStore from '../../store/appStore'
+import useStore, { PHASE } from '../../store/appStore'
 import { sendCopilotMessage, getLastClaudeError } from '../../services/anthropicService'
 import styles from './AICopilot.module.css'
 
@@ -100,7 +100,7 @@ export default function AICopilot() {
     const results = await searchPlaces(placeName, userLocation)
     if (results[0]) {
       setDestination(results[0])
-      setPhase('route_preview')
+      setPhase(PHASE.ROUTE_PREVIEW)
     }
   }
 
