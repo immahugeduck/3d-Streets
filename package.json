@@ -12,11 +12,8 @@
     "react": "^18.3.1",
     "react-dom": "^18.3.1",
     "mapbox-gl": "^3.5.0",
-    "@mapbox/mapbox-gl-directions": "^4.1.1",
     "zustand": "^4.5.4",
-    "framer-motion": "^11.3.0",
-    "lucide-react": "^0.427.0",
-    "clsx": "^2.1.1"
+    "framer-motion": "^11.3.0"
   },
   "devDependencies": {
     "@vitejs/plugin-react": "^4.3.1",

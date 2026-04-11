@@ -262,5 +262,3 @@ const useStore = create((set, get) => ({
 }))
 
 export default useStore
-
-cat > src/components/Map/MapView.jsx
