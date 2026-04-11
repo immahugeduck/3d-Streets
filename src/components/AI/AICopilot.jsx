@@ -1,7 +1,7 @@
 import { useState, useRef, useEffect } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import useStore, { PHASE } from '../../store/appStore'
-import { sendCopilotMessage, getLastClaudeError } from '../../services/anthropicService'
+import { sendCopilotMessage, getLastClaudeError, getLastClaudeMeta } from '../../services/anthropicService'
 import styles from './AICopilot.module.css'
 
 const QUICK_PROMPTS = [
@@ -69,11 +69,13 @@ export default function AICopilot() {
 
     if (!reply) {
       const details = getLastClaudeError()
+      const meta = getLastClaudeMeta()
+      const ref = meta?.requestId ? ` (Ref: ${meta.requestId})` : ''
       addMessage({
         role: 'assistant',
         content: details
-          ? `I couldn't respond right now. ${details}`
-          : "I couldn't respond right now. Check your Anthropic key in .env or .env.local.",
+          ? `I couldn't respond right now. ${details}${ref}`
+          : `I couldn't respond right now. Check your Anthropic key in .env or .env.local.${ref}`,
       })
       return
     }

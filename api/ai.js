@@ -9,6 +9,48 @@
 const ANTHROPIC_URL = 'https://api.anthropic.com/v1/messages'
 const MODEL = process.env.ANTHROPIC_MODEL || 'claude-3-5-sonnet-latest'
 const TIMEOUT_MS = 28000 // stay under Vercel's 30s function limit
+const REQUEST_ID_HEADER = 'X-Request-Id'
+const CLIENT_REQUEST_ID_HEADER = 'x-client-request-id'
+
+const ERRORS = {
+  BAD_METHOD: 'BAD_METHOD',
+  RATE_LIMITED: 'RATE_LIMITED',
+  BAD_JSON: 'BAD_JSON',
+  BAD_BODY: 'BAD_BODY',
+  BAD_PAYLOAD: 'BAD_PAYLOAD',
+  AI_MISSING_KEY: 'AI_MISSING_KEY',
+  AI_API_KEY_INVALID: 'AI_API_KEY_INVALID',
+  AI_MODEL_NOT_FOUND: 'AI_MODEL_NOT_FOUND',
+  AI_PROVIDER_RATE_LIMIT: 'AI_PROVIDER_RATE_LIMIT',
+  AI_TIMEOUT: 'AI_TIMEOUT',
+  AI_PROVIDER_ERROR: 'AI_PROVIDER_ERROR',
+}
+
+function makeRequestId() {
+  return `${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 10)}`
+}
+
+function getClientRequestId(req) {
+  const raw = req.headers?.[CLIENT_REQUEST_ID_HEADER]
+  if (Array.isArray(raw)) return String(raw[0] || '').slice(0, 80)
+  if (typeof raw === 'string') return raw.slice(0, 80)
+  return ''
+}
+
+function makeError(message, code, status) {
+  const err = new Error(message)
+  err.code = code
+  err.status = status
+  return err
+}
+
+function logEvent(event, fields) {
+  console.log(JSON.stringify({ event, ...fields }))
+}
+
+function respondError(res, { status, error, code, requestId }) {
+  return res.status(status).json({ error, code, requestId })
+}
 
 // ── Simple in-memory rate limiter ────────────────────────────────────────
 // Allows MAX_REQUESTS per IP within WINDOW_MS. Resets per cold start, which
@@ -158,7 +200,7 @@ const ACTION_BUILDERS = {
 // ── Core Anthropic caller ─────────────────────────────────────────────────
 async function callAnthropic({ system, messages, maxTokens }) {
   const apiKey = process.env.ANTHROPIC_API_KEY
-  if (!apiKey) throw new Error('ANTHROPIC_API_KEY is not set in environment variables.')
+  if (!apiKey) throw makeError('ANTHROPIC_API_KEY is not set in environment variables.', ERRORS.AI_MISSING_KEY, 502)
 
   const controller = new AbortController()
   const timeout = setTimeout(() => controller.abort(), TIMEOUT_MS)
@@ -188,10 +230,16 @@ async function callAnthropic({ system, messages, maxTokens }) {
       let message = errText
       try { message = JSON.parse(errText)?.error?.message || errText } catch { /* use raw */ }
 
-      if (res.status === 401 || res.status === 403) throw new Error('Anthropic API key rejected (401/403).')
-      if (res.status === 404) throw new Error(`Anthropic model not found: ${MODEL}.`)
-      if (res.status === 429) throw new Error('Anthropic rate limit reached. Please try again shortly.')
-      throw new Error(`Anthropic error ${res.status}: ${message}`)
+      if (res.status === 401 || res.status === 403) {
+        throw makeError('Anthropic API key rejected (401/403).', ERRORS.AI_API_KEY_INVALID, 502)
+      }
+      if (res.status === 404) {
+        throw makeError(`Anthropic model not found: ${MODEL}.`, ERRORS.AI_MODEL_NOT_FOUND, 502)
+      }
+      if (res.status === 429) {
+        throw makeError('Anthropic rate limit reached. Please try again shortly.', ERRORS.AI_PROVIDER_RATE_LIMIT, 429)
+      }
+      throw makeError(`Anthropic error ${res.status}: ${message}`, ERRORS.AI_PROVIDER_ERROR, 502)
     }
 
     const data = await res.json()
@@ -204,6 +252,10 @@ async function callAnthropic({ system, messages, maxTokens }) {
 
 // ── Main handler ──────────────────────────────────────────────────────────
 export default async function handler(req, res) {
+  const startedAt = Date.now()
+  const requestId = getClientRequestId(req) || makeRequestId()
+  res.setHeader(REQUEST_ID_HEADER, requestId)
+
   // CORS — allow same-origin and deployed Vercel URLs
   const origin = req.headers.origin || ''
   const allowedOrigins = (process.env.ALLOWED_ORIGINS || '').split(',').map(s => s.trim()).filter(Boolean)
@@ -213,38 +265,99 @@ export default async function handler(req, res) {
   res.setHeader('Access-Control-Allow-Headers', 'Content-Type')
 
   if (req.method === 'OPTIONS') return res.status(204).end()
-  if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed. Use POST.' })
+  if (req.method !== 'POST') {
+    return respondError(res, {
+      status: 405,
+      error: 'Method not allowed. Use POST.',
+      code: ERRORS.BAD_METHOD,
+      requestId,
+    })
+  }
 
   // Rate limiting
   const ip = (req.headers['x-forwarded-for'] || req.socket?.remoteAddress || 'unknown').split(',')[0].trim()
-  if (isRateLimited(ip)) return res.status(429).json({ error: 'Too many requests. Please slow down.' })
+  if (isRateLimited(ip)) {
+    logEvent('ai_request_rejected', {
+      requestId,
+      action: 'unknown',
+      code: ERRORS.RATE_LIMITED,
+      status: 429,
+      durationMs: Date.now() - startedAt,
+    })
+    return respondError(res, {
+      status: 429,
+      error: 'Too many requests. Please slow down.',
+      code: ERRORS.RATE_LIMITED,
+      requestId,
+    })
+  }
 
   // Parse body
   let body
   try { body = typeof req.body === 'object' ? req.body : JSON.parse(req.body) }
-  catch { return res.status(400).json({ error: 'Invalid JSON body.' }) }
+  catch {
+    return respondError(res, {
+      status: 400,
+      error: 'Invalid JSON body.',
+      code: ERRORS.BAD_JSON,
+      requestId,
+    })
+  }
 
   // Validate
   const validationError = validateBody(body)
-  if (validationError) return res.status(400).json({ error: validationError })
+  if (validationError) {
+    return respondError(res, {
+      status: 400,
+      error: validationError,
+      code: ERRORS.BAD_BODY,
+      requestId,
+    })
+  }
 
   // Build prompt
   let claudeRequest
   try {
     claudeRequest = ACTION_BUILDERS[body.action](body.payload)
   } catch (err) {
-    return res.status(400).json({ error: err.message })
+    return respondError(res, {
+      status: 400,
+      error: err.message,
+      code: ERRORS.BAD_PAYLOAD,
+      requestId,
+    })
   }
 
   // Call Anthropic
   try {
     const text = await callAnthropic(claudeRequest)
+    logEvent('ai_request_success', {
+      requestId,
+      action: body.action,
+      status: 200,
+      durationMs: Date.now() - startedAt,
+    })
     return res.status(200).json({ text })
   } catch (err) {
-    const isAbort = err.name === 'AbortError'
-    const status = isAbort ? 504 : err.message.includes('429') ? 429 : 502
-    const message = isAbort ? 'AI request timed out. Please try again.' : err.message
-    console.error('[/api/ai]', err.message)
-    return res.status(status).json({ error: message })
+    const isAbort = err?.name === 'AbortError'
+    const code = isAbort ? ERRORS.AI_TIMEOUT : (err.code || ERRORS.AI_PROVIDER_ERROR)
+    const status = isAbort ? 504 : (err.status || 502)
+    const message = isAbort ? 'AI request timed out. Please try again.' : (err.message || 'AI request failed.')
+
+    logEvent('ai_request_failed', {
+      requestId,
+      action: body.action,
+      status,
+      code,
+      durationMs: Date.now() - startedAt,
+      message,
+    })
+
+    return respondError(res, {
+      status,
+      error: message,
+      code,
+      requestId,
+    })
   }
 }
