@@ -149,13 +149,13 @@ export default function RoutePreviewPanel() {
         ))}
       </div>
 
-      {/* AI summary */}
-      {aiSummary && (
-        <div className={styles.aiSummary}>
-          <span className={styles.aiSummaryIcon}>✦</span>
-          <span>{aiSummary}</span>
-        </div>
-      )}
+{/* AI summary */}
+  {(aiSummary || selectedRoute?.aiDescription) && (
+  <div className={styles.aiSummary}>
+  <span className={styles.aiSummaryIcon}>✦</span>
+  <span>{selectedRoute?.aiDescription || aiSummary}</span>
+  </div>
+  )}
 
       {/* Action buttons */}
       <div className={styles.actions}>
