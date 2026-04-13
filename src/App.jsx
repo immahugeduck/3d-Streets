@@ -1,6 +1,7 @@
 import { AnimatePresence, motion } from 'framer-motion'
 import useStore, { PHASE, MAP_STYLES } from './store/appStore'
 import { useLocation } from './hooks/useLocation'
+import { useNavigationProgress } from './hooks/useNavigationProgress'
 
 import MapView            from './components/Map/MapView'
 import SearchBar          from './components/Search/SearchBar'
@@ -17,6 +18,7 @@ import styles from './App.module.css'
 
 export default function App() {
   useLocation()
+  useNavigationProgress()
 
   const phase             = useStore(s => s.phase)
   const showPOI           = useStore(s => s.showPOI)

@@ -72,9 +72,11 @@ function parseSteps(route) {
       instruction: step.maneuver.instruction,
       street: step.name || step.ref || 'Continue',
       distanceM: step.distance,
+      durationS: step.duration,
       distanceLabel: formatDist(step.distance),
       maneuver: step.maneuver.type,
       modifier: step.maneuver.modifier,
+      location: step.maneuver.location, // [lng, lat] of maneuver point
       bearing: step.maneuver.bearing_after,
       voiceInstruction: step.voiceInstructions?.[0]?.announcement ?? null,
       bannerInstruction: step.bannerInstructions?.[0]?.primary?.text ?? null,
