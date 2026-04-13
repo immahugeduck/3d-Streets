@@ -104,6 +104,11 @@ export default function MapView() {
   useEffect(() => {
     const map = mapRef.current
     if (!map || !userLocation || phase !== PHASE.NAVIGATING) return
+
+    const now = Date.now()
+    if (now - lastCameraUpdateRef.current < 500) return  // throttle to ≤ 2 Hz
+    lastCameraUpdateRef.current = now
+
     const bearing = (userHeading !== null && userHeading !== undefined)
       ? userHeading
       : map.getBearing()
@@ -112,7 +117,7 @@ export default function MapView() {
       zoom:     17.5,
       pitch:    is3D ? 70 : 0,
       bearing,
-      duration: 800,
+      duration: 600,
     })
   }, [userLocation, userHeading, phase, is3D])
 
