@@ -14,7 +14,8 @@ dist-ssr/
 
 # Vite / editor artifacts
 *.local
-.vite/
+.vite
+.vercel/
 
 # OS artifacts
 .DS_Store
