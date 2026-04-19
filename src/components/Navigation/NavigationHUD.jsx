@@ -49,6 +49,8 @@ export default function NavigationHUD() {
   const destination       = useStore(s => s.destination)
   const setShowRouteStops = useStore(s => s.setShowRouteStops)
   const setShowNavSidebar = useStore(s => s.setShowNavSidebar)
+  const drivingView       = useStore(s => s.drivingView)
+  const toggleDrivingView = useStore(s => s.toggleDrivingView)
 
   const totalStops = waypoints.length + (destination ? 1 : 0)
 
@@ -101,6 +103,27 @@ export default function NavigationHUD() {
         {/* End nav */}
         <button className={styles.endBtn} onClick={endNavigation}>✕</button>
 
+        {/* Driving view toggle */}
+        <button
+          className={`${styles.viewToggleBtn} ${drivingView ? styles.viewToggleActive : ''}`}
+          onClick={toggleDrivingView}
+          aria-label={drivingView ? 'Switch to bird eye view' : 'Switch to driving view'}
+          title={drivingView ? 'Bird eye view' : 'Driving view'}
+        >
+          {drivingView ? (
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+              <circle cx="12" cy="12" r="10" />
+              <circle cx="12" cy="12" r="3" />
+              <path d="M12 2v4m0 12v4M2 12h4m12 0h4" />
+            </svg>
+          ) : (
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+              <path d="M19 17H5l-2 2V5a2 2 0 012-2h14a2 2 0 012 2v10a2 2 0 01-2 2z" />
+              <path d="M12 8v4l2 2" />
+            </svg>
+          )}
+        </button>
+
         {/* Sidebar toggle */}
         <button
           className={styles.sidebarBtn}
@@ -135,8 +158,8 @@ export default function NavigationHUD() {
         )}
       </AnimatePresence>
 
-      {/* ── Speed HUD ─────────────────────────────────────────────────── */}
-      {showSpeedHUD && (
+      {/* ── Speed HUD (hidden in driving view - car hood shows it) ────── */}
+      {showSpeedHUD && !drivingView && (
         <motion.div
           className={`${styles.speedHUD} ${styles[state]}`}
           initial={{ x: -60, opacity: 0 }}
@@ -148,8 +171,8 @@ export default function NavigationHUD() {
         </motion.div>
       )}
 
-      {/* ── Next-turn HUD ─────────────────────────────────────────────── */}
-      {nextStep && (
+      {/* ── Next-turn HUD (hidden in driving view) ─────────────────────── */}
+      {nextStep && !drivingView && (
         <motion.button
           className={styles.nextTurnHUD}
           onClick={() => setShowNavSidebar(true)}
