@@ -69,6 +69,25 @@
 }
 .endBtn:active { transform: scale(0.9); background: rgba(255,78,106,0.3); }
 
+.viewToggleBtn {
+  width: 40px; height: 40px;
+  border-radius: var(--r-sm);
+  background: var(--bg-elevated);
+  border: 0.5px solid var(--border-subtle);
+  color: var(--text-secondary);
+  cursor: pointer;
+  display: flex; align-items: center; justify-content: center;
+  flex-shrink: 0;
+  transition: all 0.15s;
+}
+.viewToggleBtn:active { transform: scale(0.9); }
+.viewToggleBtn.viewToggleActive {
+  background: var(--accent-dim);
+  border-color: rgba(0, 212, 255, 0.4);
+  color: var(--accent);
+  box-shadow: 0 0 12px var(--accent-glow);
+}
+
 .sidebarBtn {
   width: 40px; height: 40px;
   border-radius: var(--r-sm);

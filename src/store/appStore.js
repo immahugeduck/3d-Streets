@@ -110,10 +110,13 @@ const useStore = create((set, get) => ({
   is3D:        true,
   showTraffic: false,
   mapRef:      null,
+  drivingView: true,  // First-person driving perspective during navigation
   setMapStyle:    (mapStyle)    => set({ mapStyle }),
   setIs3D:        (is3D)        => set({ is3D }),
   setShowTraffic: (showTraffic) => set({ showTraffic }),
   setMapRef:      (mapRef)      => set({ mapRef }),
+  setDrivingView: (drivingView) => set({ drivingView }),
+  toggleDrivingView: () => set(s => ({ drivingView: !s.drivingView })),
 
   // ── User location ─────────────────────────────────────────────────────
   userLocation: null,

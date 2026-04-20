@@ -21,6 +21,7 @@ export default function MapView() {
   const userLocation = useStore(s => s.userLocation)
   const userHeading  = useStore(s => s.userHeading)
   const phase        = useStore(s => s.phase)
+  const drivingView  = useStore(s => s.drivingView)
 
   useEffect(() => {
     if (mapRef.current) return
@@ -112,14 +113,41 @@ export default function MapView() {
     const bearing = (userHeading !== null && userHeading !== undefined)
       ? userHeading
       : map.getBearing()
-    map.easeTo({
-      center:   [userLocation.lng, userLocation.lat],
-      zoom:     17.5,
-      pitch:    is3D ? 70 : 0,
-      bearing,
-      duration: 600,
-    })
-  }, [userLocation, userHeading, phase, is3D])
+
+    if (drivingView) {
+      // First-person driving perspective: camera positioned behind and above user
+      // looking forward along the direction of travel
+      map.easeTo({
+        center:   [userLocation.lng, userLocation.lat],
+        zoom:     18.5,
+        pitch:    80,  // Near-horizontal view
+        bearing,
+        duration: 400,
+      })
+    } else {
+      // Traditional bird's eye view
+      map.easeTo({
+        center:   [userLocation.lng, userLocation.lat],
+        zoom:     17.5,
+        pitch:    is3D ? 70 : 0,
+        bearing,
+        duration: 600,
+      })
+    }
+  }, [userLocation, userHeading, phase, is3D, drivingView])
+
+  // ── Hide user marker in driving view ──────────────────────────────────────
+  useEffect(() => {
+    if (!userMarkerRef.current) return
+    const el = userMarkerRef.current.getElement()
+    if (phase === PHASE.NAVIGATING && drivingView) {
+      el.style.opacity = '0'
+      el.style.pointerEvents = 'none'
+    } else {
+      el.style.opacity = '1'
+      el.style.pointerEvents = 'auto'
+    }
+  }, [phase, drivingView])
 
   return <div ref={containerRef} className={styles.mapContainer} />
 }

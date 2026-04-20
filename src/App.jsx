@@ -7,6 +7,7 @@ import MapView            from './components/Map/MapView'
 import SearchBar          from './components/Search/SearchBar'
 import MapControls        from './components/Controls/MapControls'
 import NavigationHUD      from './components/Navigation/NavigationHUD'
+import CarHoodOverlay     from './components/Navigation/CarHoodOverlay'
 import RoutePreviewPanel  from './components/Navigation/RoutePreviewPanel'
 import RouteStopsPanel    from './components/Navigation/RouteStopsPanel'
 import NavigationSidebar  from './components/Navigation/NavigationSidebar'
@@ -37,6 +38,10 @@ export default function App() {
 
       <AnimatePresence>
         {phase === PHASE.NAVIGATING && <NavigationHUD key="hud" />}
+      </AnimatePresence>
+
+      <AnimatePresence>
+        {phase === PHASE.NAVIGATING && <CarHoodOverlay key="car-hood" />}
       </AnimatePresence>
 
       {phase !== PHASE.NAVIGATING && phase !== PHASE.SKETCHING && (
@@ -88,6 +93,8 @@ function SettingsOverlay({ onClose }) {
   const setShowTraffic  = useStore(s => s.setShowTraffic)
   const showSpeedHUD    = useStore(s => s.showSpeedHUD)
   const setShowSpeedHUD = useStore(s => s.setShowSpeedHUD)
+  const drivingView     = useStore(s => s.drivingView)
+  const setDrivingView  = useStore(s => s.setDrivingView)
 
   return (
     <>
@@ -125,6 +132,7 @@ function SettingsOverlay({ onClose }) {
           <div className={styles.section}>
             <div className={styles.sectionLabel}>DISPLAY</div>
             <ToggleRow label="3D Buildings"  value={is3D}         onChange={setIs3D} />
+            <ToggleRow label="Driving View"  value={drivingView}  onChange={setDrivingView} />
             <ToggleRow label="Live Traffic"  value={showTraffic}  onChange={setShowTraffic} />
             <ToggleRow label="Speed HUD"     value={showSpeedHUD} onChange={setShowSpeedHUD} />
           </div>
