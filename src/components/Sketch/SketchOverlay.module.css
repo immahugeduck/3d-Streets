@@ -79,6 +79,12 @@
 }
 .toolBtn:disabled { opacity: 0.3; cursor: default; }
 .toolBtn:not(:disabled):active { transform: scale(0.92); }
+.toolBtnActive {
+  background: var(--accent-dim);
+  border-color: rgba(0, 212, 255, 0.4);
+  color: var(--accent);
+  box-shadow: 0 0 10px var(--accent-glow);
+}
 
 .primaryBtn {
   display: flex;
