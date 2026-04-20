@@ -181,4 +181,36 @@ function sampleArray(arr, maxLen) {
   return Array.from({ length: maxLen }, (_, i) => arr[Math.floor(i * step)])
 }
 
+// ── Point-to-line distance for off-route detection ────────────────────────
+// Returns the minimum perpendicular distance (meters) from a point to any segment of a polyline
+function pointToSegmentDistanceM(point, segStart, segEnd) {
+  const [px, py] = [point.lng, point.lat]
+  const [ax, ay] = segStart // [lng, lat]
+  const [bx, by] = segEnd   // [lng, lat]
+
+  const dx = bx - ax
+  const dy = by - ay
+  const lenSq = dx * dx + dy * dy
+
+  let t = 0
+  if (lenSq > 0) {
+    t = Math.max(0, Math.min(1, ((px - ax) * dx + (py - ay) * dy) / lenSq))
+  }
+
+  const closestLng = ax + t * dx
+  const closestLat = ay + t * dy
+
+  return haversineM(py, px, closestLat, closestLng)
+}
+
+export function pointToLineDistanceM(point, lineCoords) {
+  if (!lineCoords || lineCoords.length < 2) return Infinity
+  let minDist = Infinity
+  for (let i = 0; i < lineCoords.length - 1; i++) {
+    const dist = pointToSegmentDistanceM(point, lineCoords[i], lineCoords[i + 1])
+    if (dist < minDist) minDist = dist
+  }
+  return minDist
+}
+
 export { formatDist, formatDur, haversineM }
