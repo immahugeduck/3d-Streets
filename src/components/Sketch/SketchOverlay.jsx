@@ -18,10 +18,11 @@ export default function SketchOverlay() {
   const rawPoints  = useRef([])
 
   // Two-pin anchors (screen coords + geo coords)
-  const [startPin, setStartPin] = useState(null)  // { x, y, lng, lat }
-  const [endPin,   setEndPin]   = useState(null)  // { x, y, lng, lat }
-  const [drawMode, setDrawMode] = useState('pin_start')
+  const [startPin,  setStartPin]  = useState(null)  // { x, y, lng, lat }
+  const [endPin,    setEndPin]    = useState(null)   // { x, y, lng, lat }
+  const [drawMode,  setDrawMode]  = useState('pin_start')
   const [hasStroke, setHasStroke] = useState(false)
+  const [panMode,   setPanMode]   = useState(false)  // lets map events through
 
   const exitSketch       = useStore(s => s.exitSketch)
   const setPhase         = useStore(s => s.setPhase)
@@ -131,6 +132,7 @@ export default function SketchOverlay() {
 
   function onStart(e) {
     e.preventDefault()
+    if (panMode) return  // canvas is pointer-events:none so this won't fire, but guard anyway
     const pt = getPoint(e)
 
     if (drawMode === 'pin_start') {
@@ -240,14 +242,16 @@ export default function SketchOverlay() {
   }
 
   // ── Status hint text ──────────────────────────────────────────────────
-  const hintText = {
-    pin_start:  'Tap to place your START point',
-    pin_end:    'Tap to place your END point',
-    drawing:    'Draw your route — or tap "Build Route" to go',
-    processing: 'Building route…',
-    done:       'Route ready',
-    error:      'Could not find a route — try different points',
-  }[drawMode] ?? ''
+  const hintText = panMode
+    ? 'Pan mode — move the map freely, tap Pan again to resume'
+    : ({
+        pin_start:  'Tap to place your START point',
+        pin_end:    'Tap to place your END point',
+        drawing:    'Draw your route — or tap "Build Route" to go',
+        processing: 'Building route…',
+        done:       'Route ready',
+        error:      'Could not find a route — try different points',
+      }[drawMode] ?? '')
 
   const canBuild  = startPin && endPin && drawMode === 'drawing'
   const isWorking = drawMode === 'processing'
@@ -257,13 +261,16 @@ export default function SketchOverlay() {
       <canvas
         ref={canvasRef}
         className={styles.canvas}
-        onTouchStart={onStart}
-        onTouchMove={onMove}
-        onTouchEnd={onEnd}
-        onMouseDown={onStart}
-        onMouseMove={onMove}
-        onMouseUp={onEnd}
-        style={{ cursor: drawMode === 'drawing' ? 'crosshair' : 'pointer' }}
+        onTouchStart={panMode ? undefined : onStart}
+        onTouchMove={panMode ? undefined : onMove}
+        onTouchEnd={panMode ? undefined : onEnd}
+        onMouseDown={panMode ? undefined : onStart}
+        onMouseMove={panMode ? undefined : onMove}
+        onMouseUp={panMode ? undefined : onEnd}
+        style={{
+          cursor: panMode ? 'grab' : drawMode === 'drawing' ? 'crosshair' : 'pointer',
+          pointerEvents: panMode ? 'none' : 'auto',
+        }}
       />
 
       {/* Step indicator */}
@@ -329,6 +336,25 @@ export default function SketchOverlay() {
         </button>
 
         <button
+          className={`${styles.toolBtn} ${panMode ? styles.toolBtnActive : ''}`}
+          onClick={() => setPanMode(p => !p)}
+          disabled={isWorking}
+          title="Toggle pan mode — lets you move the map without placing pins"
+        >
+          <PanIcon />
+          <span>Pan</span>
+        </button>
+
+        <button
+          className={styles.toolBtn}
+          onClick={resetPins}
+          disabled={!canClear}
+        >
+          <UndoIcon />
+          <span>Undo</span>
+        </button>
+
+        <button
           className={styles.toolBtn}
           onClick={resetPins}
           disabled={!startPin || isWorking}
@@ -375,6 +401,7 @@ function StepDot({ label, text, done, active, color }) {
 
 // ── Icon components ───────────────────────────────────────────────────────
 const UndoIcon    = () => <svg width="18" height="18" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" viewBox="0 0 24 24"><polyline points="9 14 4 9 9 4"/><path d="M20 20v-7a4 4 0 0 0-4-4H4"/></svg>
+const PanIcon     = () => <svg width="18" height="18" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" viewBox="0 0 24 24"><path d="M18 11V6a2 2 0 0 0-2-2 2 2 0 0 0-2 2"/><path d="M14 10V4a2 2 0 0 0-2-2 2 2 0 0 0-2 2v2"/><path d="M10 10.5V6a2 2 0 0 0-2-2 2 2 0 0 0-2 2v8"/><path d="M18 11a2 2 0 1 1 4 0v3a8 8 0 0 1-8 8h-2a8 8 0 0 1-7.4-5L3 16"/></svg>
 const TrashIcon   = () => <svg width="18" height="18" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" viewBox="0 0 24 24"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14H6L5 6"/><path d="M10 11v6M14 11v6"/><path d="M9 6V4h6v2"/></svg>
 const XIcon       = () => <svg width="18" height="18" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" viewBox="0 0 24 24"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
 const SparkleIcon = () => <svg width="16" height="16" fill="currentColor" viewBox="0 0 24 24"><path d="M12 2l2.4 7.4H22l-6.2 4.5 2.4 7.4L12 17l-6.2 4.3 2.4-7.4L2 9.4h7.6z"/></svg>
