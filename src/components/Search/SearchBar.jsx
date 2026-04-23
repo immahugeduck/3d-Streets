@@ -172,7 +172,7 @@ export default function SearchBar() {
                       <div className={styles.resultName}>{r.name}</div>
                       <div className={styles.resultAddr}>{r.address}</div>
                     </div>
-                    {r.distance && (
+                    {r.distance != null && (
                       <div className={styles.resultDist}>{formatDist(r.distance)}</div>
                     )}
                   </button>
