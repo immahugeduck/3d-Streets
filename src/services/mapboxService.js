@@ -6,24 +6,47 @@ const TOKEN = import.meta.env.VITE_MAPBOX_TOKEN || ''
 export async function searchPlaces(query, proximity = null) {
   if (!query || query.length < 2) return []
   const encoded = encodeURIComponent(query)
-  // Only bias by proximity when query is short (<=3 words) AND looks purely local
-  // (no city/state context). This lets "Walmart Nashville TN" find out-of-state results.
-  const words = query.trim().split(/\s+/)
-  const hasLocationContext = words.length > 2
-  const prox = (proximity && !hasLocationContext) ? `&proximity=${proximity.lng},${proximity.lat}` : ''
-  const url = `https://api.mapbox.com/geocoding/v5/mapbox.places/${encoded}.json?access_token=${TOKEN}&limit=8&types=poi,address,place${prox}`
+  
+  // Detect if query looks like a full address (has numbers + street indicators)
+  const looksLikeAddress = /\d+\s+\w+\s+(st|street|ave|avenue|rd|road|blvd|dr|drive|ln|lane|way|ct|court|pl|place)/i.test(query)
+  // Detect if query includes explicit city/state (e.g., "Nashville TN", "New York")
+  const hasExplicitLocation = /,\s*[A-Z]{2}$/i.test(query.trim()) || /\b(AL|AK|AZ|AR|CA|CO|CT|DE|FL|GA|HI|ID|IL|IN|IA|KS|KY|LA|ME|MD|MA|MI|MN|MS|MO|MT|NE|NV|NH|NJ|NM|NY|NC|ND|OH|OK|OR|PA|RI|SC|SD|TN|TX|UT|VT|VA|WA|WV|WI|WY)\b/i.test(query)
+  
+  // ALWAYS use proximity for POI-style queries (Walmart, parks, restaurants)
+  // Only skip proximity if it's clearly a full address or has explicit city/state
+  const useProximity = proximity && !looksLikeAddress && !hasExplicitLocation
+  const prox = useProximity ? `&proximity=${proximity.lng},${proximity.lat}` : ''
+  
+  // Prioritize POI for short queries, include address/place for longer ones
+  const types = query.trim().split(/\s+/).length <= 3 ? 'poi,place,address' : 'address,poi,place'
+  
+  const url = `https://api.mapbox.com/geocoding/v5/mapbox.places/${encoded}.json?access_token=${TOKEN}&limit=8&types=${types}${prox}`
 
   try {
     const res = await fetch(url)
     const data = await res.json()
-    return (data.features || []).map(f => ({
-      id: f.id,
-      name: f.text,
-      address: f.place_name,
-      lat: f.geometry.coordinates[1],
-      lng: f.geometry.coordinates[0],
-      distance: f.properties?.distance ?? null,
-    }))
+    
+    // Calculate distance for each result if we have user location
+    return (data.features || []).map(f => {
+      const lat = f.geometry.coordinates[1]
+      const lng = f.geometry.coordinates[0]
+      const dist = proximity ? haversineM(proximity.lat, proximity.lng, lat, lng) : null
+      return {
+        id: f.id,
+        name: f.text,
+        address: f.place_name,
+        lat,
+        lng,
+        distance: dist,
+        category: f.properties?.category ?? null,
+      }
+    }).sort((a, b) => {
+      // For POI queries with proximity, sort by distance
+      if (useProximity && a.distance != null && b.distance != null) {
+        return a.distance - b.distance
+      }
+      return 0 // keep Mapbox relevance order otherwise
+    })
   } catch {
     return []
   }
