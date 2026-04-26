@@ -52,6 +52,8 @@ export default function NavigationHUD() {
   const drivingView       = useStore(s => s.drivingView)
   const toggleDrivingView = useStore(s => s.toggleDrivingView)
 
+  const isReroutingActive = useStore(s => s.isReroutingActive)
+
   const totalStops = waypoints.length + (destination ? 1 : 0)
 
   const step = routeSteps[currentStepIndex]
@@ -133,6 +135,21 @@ export default function NavigationHUD() {
           ☰
         </button>
       </motion.div>
+
+      {/* ── Recalculating banner ─────────────────────────────────────── */}
+      <AnimatePresence>
+        {isReroutingActive && (
+          <motion.div
+            className={styles.recalcBanner}
+            initial={{ y: -20, opacity: 0 }}
+            animate={{ y: 0, opacity: 1 }}
+            exit={{ y: -20, opacity: 0 }}
+          >
+            <div className={styles.recalcSpinner} />
+            <span className={styles.recalcText}>Recalculating route…</span>
+          </motion.div>
+        )}
+      </AnimatePresence>
 
       {/* ── Reroute banner ────────────────────────────────────────────── */}
       <AnimatePresence>
