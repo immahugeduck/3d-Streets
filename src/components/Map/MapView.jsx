@@ -37,7 +37,12 @@ export default function MapView() {
     })
 
     map.on('load', () => {
-      add3DBuildings(map)
+      const styleDef = MAP_STYLES[useStore.getState().mapStyle] ?? MAP_STYLES.dark
+      if (styleDef.isStandard) {
+        applyStandardConfig(map, styleDef.lightPreset)
+      } else {
+        add3DBuildings(map)
+      }
       addTerrain(map)
       addTrafficLayers(map)
       syncTrafficVisibility(map, showTraffic)
@@ -56,10 +61,14 @@ export default function MapView() {
   useEffect(() => {
     const map = mapRef.current
     if (!map) return
-    const style = MAP_STYLES[mapStyle]?.uri ?? MAP_STYLES.dark.uri
-    map.setStyle(style)
+    const styleDef = MAP_STYLES[mapStyle] ?? MAP_STYLES.dark
+    map.setStyle(styleDef.uri)
     map.once('style.load', () => {
-      add3DBuildings(map)
+      if (styleDef.isStandard) {
+        applyStandardConfig(map, styleDef.lightPreset)
+      } else {
+        add3DBuildings(map)
+      }
       addTerrain(map)
       // Redraw any previously drawn routes after style reload
       _drawnRoutes.forEach(({ geojson, isAlternate }) => {
@@ -160,6 +169,21 @@ export default function MapView() {
   return <div ref={containerRef} className={styles.mapContainer} />
 }
 
+// Mapbox Standard style: configure via the config API instead of manual layers.
+// Standard already renders 3D buildings with dynamic lighting — we just set the
+// light preset and any desired feature flags.
+function applyStandardConfig(map, lightPreset = 'night') {
+  try {
+    map.setConfigProperty('basemap', 'lightPreset', lightPreset)
+    map.setConfigProperty('basemap', 'showPointOfInterestLabels', true)
+    map.setConfigProperty('basemap', 'showTransitLabels', true)
+    map.setConfigProperty('basemap', 'showPlaceLabels', true)
+    map.setConfigProperty('basemap', 'showRoadLabels', true)
+  } catch (e) {
+    // Style may not have loaded config yet — silently ignore
+  }
+}
+
 function add3DBuildings(map) {
   if (map.getLayer('3d-buildings')) return
   const layers = map.getStyle().layers
@@ -225,6 +249,7 @@ function addTrafficLayers(map) {
       type: 'line',
       source: 'mapbox-traffic',
       'source-layer': 'traffic',
+      slot: 'top',
       minzoom: 8,
       paint: {
         'line-width': ['interpolate', ['linear'], ['zoom'], 8, 1.5, 14, 4.5, 18, 8],
@@ -326,6 +351,7 @@ function _applyRouteToMap(map, geojson, isAlternate = false) {
   if (!isAlternate && glowId) {
     map.addLayer({
       id: glowId, type: 'line', source: sourceId,
+      slot: 'top',
       paint: {
         'line-color': '#00D4FF',
         'line-width': 18,
@@ -338,6 +364,7 @@ function _applyRouteToMap(map, geojson, isAlternate = false) {
 
   map.addLayer({
     id: layerId, type: 'line', source: sourceId,
+    slot: 'top',
     paint: {
       'line-color': isAlternate ? '#3D4A5C' : '#00D4FF',
       'line-width': isAlternate ? 4 : 6,
@@ -387,6 +414,7 @@ export function drawSketchPreview(coords) {
   })
   map.addLayer({
     id: 'sketch-layer', type: 'line', source: 'sketch-source',
+    slot: 'top',
     paint: {
       'line-color': '#00D4FF',
       'line-width': 3,

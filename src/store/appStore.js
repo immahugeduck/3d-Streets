@@ -35,9 +35,11 @@ function makeNavResetPatch(phase = PHASE.IDLE) {
 // ── Map style definitions ─────────────────────────────────────────────────
 export const MAP_STYLES = {
   dark: {
-    uri:   'mapbox://styles/mapbox/dark-v11',
-    label: 'Dark',
-    icon:  '🌑',
+    uri:        'mapbox://styles/mapbox/standard',
+    label:      'Dark',
+    icon:       '🌑',
+    isStandard: true,   // Mapbox Standard style — uses config API, not manual layers
+    lightPreset: 'night',
   },
   satellite: {
     uri:   'mapbox://styles/mapbox/satellite-streets-v12',
