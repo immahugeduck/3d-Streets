@@ -14,20 +14,21 @@ const PHASE_VALUES = new Set(Object.values(PHASE))
 function makeNavResetPatch(phase = PHASE.IDLE) {
   return {
     phase,
-    routeOptions:      [],
-    selectedRoute:     null,
-    routeSteps:        [],
-    currentStepIndex:  0,
-    currentLegIndex:   0,
-    legStats:          [],
-    eta:               '--:--',
-    remainingDist:     '— mi',
-    rerouteAvailable:  false,
-    rerouteTimeSave:   '',
-    showRouteStops:    false,
-    showNavSidebar:    false,
-    selectedStop:      null,
-    routeLocked:       false,
+    routeOptions:       [],
+    selectedRoute:      null,
+    routeSteps:         [],
+    currentStepIndex:   0,
+    currentLegIndex:    0,
+    legStats:           [],
+    eta:                '--:--',
+    remainingDist:      '— mi',
+    rerouteAvailable:   false,
+    rerouteTimeSave:    '',
+    showRouteStops:     false,
+    showNavSidebar:     false,
+    selectedStop:       null,
+    routeLocked:        false,
+    isReroutingActive:  false,
   }
 }
 
@@ -199,11 +200,12 @@ const useStore = create((set, get) => ({
   currentStepIndex: 0,
   eta:              '--:--',
   remainingDist:    '— mi',
-  speedMPH:         0,
-  speedLimit:       65,
-  showSpeedHUD:     true,
-  rerouteAvailable: false,
-  rerouteTimeSave:  '',
+  speedMPH:          0,
+  speedLimit:        65,
+  showSpeedHUD:      true,
+  rerouteAvailable:  false,
+  rerouteTimeSave:   '',
+  isReroutingActive: false,
   setRouteSteps:       (routeSteps)       => set(s => {
     const safeSteps = Array.isArray(routeSteps) ? routeSteps : []
     const maxIndex = Math.max(0, safeSteps.length - 1)
@@ -226,6 +228,7 @@ const useStore = create((set, get) => ({
   setShowSpeedHUD:     (showSpeedHUD)     => set({ showSpeedHUD }),
   setRerouteAvailable: (rerouteAvailable, rerouteTimeSave = '') =>
     set({ rerouteAvailable, rerouteTimeSave }),
+  setIsReroutingActive: (isReroutingActive) => set({ isReroutingActive: Boolean(isReroutingActive) }),
 
   // ── AI copilot state ─────────────────────────────────────────────────
   aiMessages: [],

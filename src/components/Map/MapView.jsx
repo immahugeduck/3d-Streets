@@ -107,7 +107,7 @@ export default function MapView() {
     if (!map || !userLocation || phase !== PHASE.NAVIGATING) return
 
     const now = Date.now()
-    if (now - lastCameraUpdateRef.current < 500) return  // throttle to ≤ 2 Hz
+    if (now - lastCameraUpdateRef.current < 250) return  // throttle to ≤ 4 Hz
     lastCameraUpdateRef.current = now
 
     const bearing = (userHeading !== null && userHeading !== undefined)
@@ -115,14 +115,22 @@ export default function MapView() {
       : map.getBearing()
 
     if (drivingView) {
-      // First-person driving perspective: camera positioned behind and above user
-      // looking forward along the direction of travel
+      // Hood-of-car perspective: offset the camera center ahead of the user along
+      // their heading so the device position appears near the bottom of the screen.
+      // At pitch 72 + zoom 18.5, ~80 m of look-ahead seats the user at the lower ¼.
+      const LOOK_AHEAD_M = 80
+      const bearingRad = bearing * (Math.PI / 180)
+      const latRad     = userLocation.lat * (Math.PI / 180)
+      const dLat = (LOOK_AHEAD_M * Math.cos(bearingRad)) / 111320
+      const dLng = (LOOK_AHEAD_M * Math.sin(bearingRad)) / (111320 * Math.cos(latRad))
+      const lookaheadCenter = [userLocation.lng + dLng, userLocation.lat + dLat]
+
       map.easeTo({
-        center:   [userLocation.lng, userLocation.lat],
+        center:   lookaheadCenter,
         zoom:     18.5,
-        pitch:    80,  // Near-horizontal view
+        pitch:    72,
         bearing,
-        duration: 400,
+        duration: 250,
       })
     } else {
       // Traditional bird's eye view
@@ -131,7 +139,7 @@ export default function MapView() {
         zoom:     17.5,
         pitch:    is3D ? 70 : 0,
         bearing,
-        duration: 600,
+        duration: 500,
       })
     }
   }, [userLocation, userHeading, phase, is3D, drivingView])

@@ -103,6 +103,47 @@
 }
 .sidebarBtn:active { transform: scale(0.9); background: var(--border-soft); }
 
+/* ── Recalculating banner ─────────────────────────────────────────────── */
+.recalcBanner {
+  position: absolute;
+  top: calc(var(--safe-top) + 100px);
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 56;
+  background: rgba(6, 8, 16, 0.92);
+  border: 0.5px solid rgba(0, 212, 255, 0.35);
+  border-radius: var(--r-pill);
+  padding: 8px 18px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  box-shadow: 0 4px 24px rgba(0, 0, 0, 0.6), 0 0 16px rgba(0, 212, 255, 0.12);
+  backdrop-filter: blur(16px);
+  white-space: nowrap;
+}
+
+.recalcSpinner {
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  border: 2px solid rgba(0, 212, 255, 0.25);
+  border-top-color: var(--accent, #00d4ff);
+  animation: spin-recalc 0.75s linear infinite;
+  flex-shrink: 0;
+}
+
+@keyframes spin-recalc {
+  to { transform: rotate(360deg); }
+}
+
+.recalcText {
+  font-family: var(--font-ui);
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--accent, #00d4ff);
+  letter-spacing: 0.02em;
+}
+
 /* ── Reroute banner ───────────────────────────────────────────────────── */
 .rerouteBanner {
   position: absolute;

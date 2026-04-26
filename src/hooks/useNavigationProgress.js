@@ -5,9 +5,9 @@ import { drawRoute, clearRoute } from '../components/Map/MapView'
 
 // ── Constants ─────────────────────────────────────────────────────────────
 const STEP_ADVANCE_THRESHOLD_M = 40     // meters to consider step reached
-const OFF_ROUTE_THRESHOLD_M = 50        // meters off route before rerouting
-const OFF_ROUTE_TICKS_REQUIRED = 3      // consecutive ticks off-route before reroute
-const ETA_UPDATE_INTERVAL_MS = 2000     // throttle live ETA updates
+const OFF_ROUTE_THRESHOLD_M    = 60     // meters off route before counting a miss
+const OFF_ROUTE_TICKS_REQUIRED = 2      // consecutive ticks off-route before reroute
+const ETA_UPDATE_INTERVAL_MS   = 2000   // throttle live ETA updates
 
 export function useNavigationProgress() {
   const phase            = useStore(s => s.phase)
@@ -21,13 +21,14 @@ export function useNavigationProgress() {
   const speedMPH         = useStore(s => s.speedMPH)
   const routeLocked      = useStore(s => s.routeLocked)
 
-  const setCurrentStepIndex = useStore(s => s.setCurrentStepIndex)
-  const setEta              = useStore(s => s.setEta)
-  const setRemainingDist    = useStore(s => s.setRemainingDist)
-  const setRouteOptions     = useStore(s => s.setRouteOptions)
-  const setSelectedRoute    = useStore(s => s.setSelectedRoute)
-  const setRouteSteps       = useStore(s => s.setRouteSteps)
-  const endNavigation       = useStore(s => s.endNavigation)
+  const setCurrentStepIndex    = useStore(s => s.setCurrentStepIndex)
+  const setEta                 = useStore(s => s.setEta)
+  const setRemainingDist       = useStore(s => s.setRemainingDist)
+  const setRouteOptions        = useStore(s => s.setRouteOptions)
+  const setSelectedRoute       = useStore(s => s.setSelectedRoute)
+  const setRouteSteps          = useStore(s => s.setRouteSteps)
+  const endNavigation          = useStore(s => s.endNavigation)
+  const setIsReroutingActive   = useStore(s => s.setIsReroutingActive)
 
   // Refs for state that shouldn't trigger re-renders
   const userLocationRef   = useRef(userLocation)
@@ -59,6 +60,7 @@ export function useNavigationProgress() {
   const triggerReroute = useCallback(async (reason = 'unknown') => {
     if (isRerouting.current) return
     isRerouting.current = true
+    setIsReroutingActive(true)
 
     const loc = userLocationRef.current
     const dest = useStore.getState().destination
@@ -67,10 +69,11 @@ export function useNavigationProgress() {
 
     if (!loc || !dest) {
       isRerouting.current = false
+      setIsReroutingActive(false)
       return
     }
 
-    console.log(`[v0] Rerouting: ${reason}`)
+    console.log(`[nav] Rerouting: ${reason}`)
 
     try {
       const routes = await getDirections({
@@ -83,6 +86,7 @@ export function useNavigationProgress() {
 
       if (!routes?.length) {
         isRerouting.current = false
+        setIsReroutingActive(false)
         return
       }
 
@@ -107,11 +111,12 @@ export function useNavigationProgress() {
 
       offRouteCount.current = 0
     } catch (err) {
-      console.error('[v0] Reroute failed:', err)
+      console.error('[nav] Reroute failed:', err)
     }
 
     isRerouting.current = false
-  }, [setRouteOptions, setSelectedRoute, setRouteSteps, setEta, setRemainingDist])
+    setIsReroutingActive(false)
+  }, [setRouteOptions, setSelectedRoute, setRouteSteps, setEta, setRemainingDist, setIsReroutingActive])
 
   // ── Step advancement + live ETA/distance + off-route detection ──────────
   useEffect(() => {
