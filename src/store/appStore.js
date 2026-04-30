@@ -29,6 +29,8 @@ function makeNavResetPatch(phase = PHASE.IDLE) {
     selectedStop:       null,
     routeLocked:        false,
     isReroutingActive:  false,
+    stepDistLabel:      '',
+    arrivalClockTime:   '',
   }
 }
 
@@ -208,6 +210,8 @@ const useStore = create((set, get) => ({
   rerouteAvailable:  false,
   rerouteTimeSave:   '',
   isReroutingActive: false,
+  stepDistLabel:     '',
+  arrivalClockTime:  '',
   setRouteSteps:       (routeSteps)       => set(s => {
     const safeSteps = Array.isArray(routeSteps) ? routeSteps : []
     const maxIndex = Math.max(0, safeSteps.length - 1)
@@ -231,6 +235,8 @@ const useStore = create((set, get) => ({
   setRerouteAvailable: (rerouteAvailable, rerouteTimeSave = '') =>
     set({ rerouteAvailable, rerouteTimeSave }),
   setIsReroutingActive: (isReroutingActive) => set({ isReroutingActive: Boolean(isReroutingActive) }),
+  setStepDistLabel:     (stepDistLabel)     => set({ stepDistLabel }),
+  setArrivalClockTime:  (arrivalClockTime)  => set({ arrivalClockTime }),
 
   // ── AI copilot state ─────────────────────────────────────────────────
   aiMessages: [],

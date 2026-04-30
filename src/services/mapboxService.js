@@ -177,7 +177,7 @@ export async function searchPOI(category, userLocation, limit = 15) {
 // ── Helpers ───────────────────────────────────────────────────────────────
 function formatDist(meters) {
   const miles = meters / 1609.34
-  if (miles < 0.1) return `${Math.round(meters)} ft`
+  if (miles < 0.1) return `${Math.round(meters * 3.28084)} ft`
   if (miles < 10) return `${miles.toFixed(1)} mi`
   return `${Math.round(miles)} mi`
 }
