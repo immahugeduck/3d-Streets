@@ -13,6 +13,7 @@ export default function MapView() {
   const mapRef = useRef(null)
   const userMarkerRef = useRef(null)
   const lastCameraUpdateRef = useRef(0)
+  const hasCenteredOnUser = useRef(false)
 
   const setMapRef    = useStore(s => s.setMapRef)
   const mapStyle     = useStore(s => s.mapStyle)
@@ -25,11 +26,12 @@ export default function MapView() {
 
   useEffect(() => {
     if (mapRef.current) return
+    // Default center: Greencastle, IN (user's home area)
     const map = new mapboxgl.Map({
       container: containerRef.current,
       style: MAP_STYLES.dark.uri,
-      center: [-98.5795, 39.8283],
-      zoom: 4,
+      center: [-86.8647, 39.6448],
+      zoom: 12,
       pitch: 55,
       bearing: 0,
       antialias: true,
@@ -107,6 +109,19 @@ export default function MapView() {
 
     if (userHeading !== null) {
       userMarkerRef.current.setRotation(userHeading)
+    }
+
+    // Fly to user's location on the first fix (GPS or IP), skip during active navigation
+    if (!hasCenteredOnUser.current && phase !== PHASE.NAVIGATING) {
+      hasCenteredOnUser.current = true
+      const flyWhenReady = () => {
+        map.flyTo({ center: [userLocation.lng, userLocation.lat], zoom: 14, pitch: 55, duration: 1200 })
+      }
+      if (map.isStyleLoaded()) {
+        flyWhenReady()
+      } else {
+        map.once('load', flyWhenReady)
+      }
     }
   }, [userLocation, userHeading])
 
