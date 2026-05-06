@@ -6,7 +6,8 @@
   right: 0;
   z-index: 45;
   pointer-events: none;
-  height: 180px;
+  /* Taller so the hood fills the lower ~30% of the screen */
+  height: 240px;
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -15,21 +16,22 @@
 
 .hood {
   width: 100%;
-  height: auto;
-  max-height: 120px;
+  height: 100%;
   display: block;
+  /* Slight glow behind the whole hood for depth */
+  filter: drop-shadow(0 -4px 24px rgba(0, 0, 0, 0.7));
 }
 
-/* ── Dashboard elements ────────────────────────────────────────────────── */
+/* ── Dashboard overlay ─────────────────────────────────────────────────── */
 .dashboard {
   position: absolute;
-  bottom: calc(80px + var(--safe-bottom, 0px));
+  bottom: calc(88px + var(--safe-bottom, 0px));
   left: 0;
   right: 0;
   display: flex;
   justify-content: space-between;
   align-items: flex-end;
-  padding: 0 24px;
+  padding: 0 28px;
   pointer-events: auto;
 }
 
@@ -37,50 +39,54 @@
   display: flex;
   flex-direction: column;
   align-items: center;
-  background: rgba(6, 8, 16, 0.8);
-  border: 1px solid rgba(0, 212, 255, 0.2);
-  border-radius: 8px;
-  padding: 8px 14px;
-  backdrop-filter: blur(8px);
-  box-shadow: 0 0 16px rgba(0, 212, 255, 0.15);
+  background: rgba(5, 7, 14, 0.85);
+  border: 1px solid rgba(0, 212, 255, 0.25);
+  border-radius: 10px;
+  padding: 10px 16px;
+  backdrop-filter: blur(10px);
+  box-shadow:
+    0 0 20px rgba(0, 212, 255, 0.12),
+    inset 0 1px 0 rgba(255, 255, 255, 0.06);
 }
 
 .speedValue {
   font-family: var(--font-hud);
-  font-size: 28px;
+  font-size: 32px;
   font-weight: 800;
   color: var(--accent, #00d4ff);
   line-height: 1;
-  letter-spacing: -0.02em;
+  letter-spacing: -0.03em;
 }
 
 .speedUnit {
   font-family: var(--font-hud);
   font-size: 9px;
   font-weight: 700;
-  letter-spacing: 0.1em;
+  letter-spacing: 0.12em;
   color: var(--text-muted, #6b7280);
-  margin-top: 2px;
+  margin-top: 3px;
+  text-transform: uppercase;
 }
 
 .viewToggle {
   width: 44px;
   height: 44px;
   border-radius: 50%;
-  background: rgba(6, 8, 16, 0.8);
-  border: 1px solid var(--border-subtle, rgba(255,255,255,0.1));
+  background: rgba(5, 7, 14, 0.85);
+  border: 1px solid var(--border-subtle, rgba(255, 255, 255, 0.1));
   color: var(--text-secondary, #9ca3af);
   cursor: pointer;
   display: flex;
   align-items: center;
   justify-content: center;
-  backdrop-filter: blur(8px);
+  backdrop-filter: blur(10px);
   transition: all 0.2s ease;
+  box-shadow: 0 0 16px rgba(0, 0, 0, 0.5);
 }
 
 .viewToggle:hover {
   background: rgba(0, 212, 255, 0.15);
-  border-color: rgba(0, 212, 255, 0.3);
+  border-color: rgba(0, 212, 255, 0.4);
   color: var(--accent, #00d4ff);
 }
 
@@ -88,36 +94,23 @@
   transform: scale(0.92);
 }
 
-/* ── Steering wheel hint ──────────────────────────────────────────────── */
-.steeringHint {
-  position: absolute;
-  bottom: calc(8px + var(--safe-bottom, 0px));
-  left: 50%;
-  transform: translateX(-50%);
-  opacity: 0.5;
-}
-
-/* ── Responsive adjustments ───────────────────────────────────────────── */
+/* ── Responsive ────────────────────────────────────────────────────────── */
 @media (min-width: 768px) {
   .overlay {
-    height: 220px;
-  }
-
-  .hood {
-    max-height: 150px;
+    height: 300px;
   }
 
   .dashboard {
-    bottom: calc(100px + var(--safe-bottom, 0px));
-    padding: 0 48px;
+    bottom: calc(110px + var(--safe-bottom, 0px));
+    padding: 0 52px;
   }
 
   .speedIndicator {
-    padding: 12px 20px;
+    padding: 12px 22px;
   }
 
   .speedValue {
-    font-size: 36px;
+    font-size: 40px;
   }
 
   .speedUnit {

@@ -7,7 +7,7 @@ import { drawRoute, clearRoute } from '../components/Map/MapView'
 const STEP_ADVANCE_THRESHOLD_M = 40     // meters to consider step reached
 const OFF_ROUTE_THRESHOLD_M    = 60     // meters off route before counting a miss
 const OFF_ROUTE_TICKS_REQUIRED = 2      // consecutive ticks off-route before reroute
-const ETA_UPDATE_INTERVAL_MS   = 2000   // throttle live ETA updates
+const ETA_UPDATE_INTERVAL_MS   = 1000   // throttle live ETA updates (1 s)
 
 export function useNavigationProgress() {
   const phase            = useStore(s => s.phase)
@@ -29,6 +29,8 @@ export function useNavigationProgress() {
   const setRouteSteps          = useStore(s => s.setRouteSteps)
   const endNavigation          = useStore(s => s.endNavigation)
   const setIsReroutingActive   = useStore(s => s.setIsReroutingActive)
+  const setStepDistLabel       = useStore(s => s.setStepDistLabel)
+  const setArrivalClockTime    = useStore(s => s.setArrivalClockTime)
 
   // Refs for state that shouldn't trigger re-renders
   const userLocationRef   = useRef(userLocation)
@@ -110,6 +112,7 @@ export function useNavigationProgress() {
       )
 
       offRouteCount.current = 0
+      lastEtaUpdate.current = 0   // force immediate ETA recalc after reroute
     } catch (err) {
       console.error('[nav] Reroute failed:', err)
     }
@@ -173,39 +176,57 @@ export function useNavigationProgress() {
     if (now - lastEtaUpdate.current < ETA_UPDATE_INTERVAL_MS) return
     lastEtaUpdate.current = now
 
-    // Distance from user to the current step's maneuver point
-    const currentStep = routeSteps[currentStepIndex]
-    let distToCurrentManeuver = 0
-    if (currentStep?.location) {
-      distToCurrentManeuver = haversineM(
+    // Distance to the NEXT maneuver = how far to the upcoming turn.
+    // Using the next step's maneuver location rather than the current step's
+    // start location (which is behind us) gives a correct decreasing countdown.
+    const nextManeuver = routeSteps[currentStepIndex + 1]
+    const currentStep  = routeSteps[currentStepIndex]
+    let distToNextManeuver = 0
+    if (nextManeuver?.location) {
+      distToNextManeuver = haversineM(
+        userLocation.lat, userLocation.lng,
+        nextManeuver.location[1], nextManeuver.location[0]
+      )
+    } else if (currentStep?.location) {
+      // On the last step — measure to the destination maneuver point
+      distToNextManeuver = haversineM(
         userLocation.lat, userLocation.lng,
         currentStep.location[1], currentStep.location[0]
       )
     }
 
-    // Sum remaining steps from currentStepIndex + 1 onward
+    // All steps from currentStepIndex + 1 onward (roads AFTER the next turn)
     const futureSteps = routeSteps.slice(currentStepIndex + 1)
     const futureDistM = futureSteps.reduce((acc, s) => acc + (s.distanceM ?? 0), 0)
-    const futureDurS = futureSteps.reduce((acc, s) => acc + (s.durationS ?? 0), 0)
+    const futureDurS  = futureSteps.reduce((acc, s) => acc + (s.durationS  ?? 0), 0)
 
-    const totalRemainingM = distToCurrentManeuver + futureDistM
+    const totalRemainingM = distToNextManeuver + futureDistM
 
-    // Calculate ETA: use current speed if moving, otherwise route estimate
-    const speedMS = speedMPH * 0.44704 // mph to m/s
+    // ETA: use live speed when moving, route-average when stopped
+    const speedMS = speedMPH * 0.44704
     let etaSeconds
     if (speedMS > 2) {
-      // Moving: estimate based on current speed
       etaSeconds = totalRemainingM / speedMS
     } else {
-      // Stopped or slow: use route's average estimate
-      const currentStepDurS = currentStep?.durationS ?? 0
-      const partialDur = currentStepDurS * (distToCurrentManeuver / (currentStep?.distanceM || 1))
+      const stepDistM  = Math.max(currentStep?.distanceM ?? 1, 1)
+      const partialDur = (currentStep?.durationS ?? 0) * Math.min(distToNextManeuver / stepDistM, 1)
       etaSeconds = partialDur + futureDurS
     }
 
+    // Wall-clock arrival time (e.g. "2:34 PM")
+    const arrival = new Date(Date.now() + etaSeconds * 1000)
+    const hh = arrival.getHours()
+    const mm = arrival.getMinutes()
+    const ampm = hh >= 12 ? 'PM' : 'AM'
+    const h12  = hh % 12 || 12
+    setArrivalClockTime(`${h12}:${String(mm).padStart(2, '0')} ${ampm}`)
+
+    setStepDistLabel(formatDist(distToNextManeuver))
     setRemainingDist(formatDist(totalRemainingM))
     setEta(formatDur(etaSeconds))
-  }, [userLocation, phase, currentStepIndex, routeSteps, selectedRoute, speedMPH, routeLocked, triggerReroute, setCurrentStepIndex, endNavigation, setRemainingDist, setEta])
+  }, [userLocation, phase, currentStepIndex, routeSteps, selectedRoute, speedMPH, routeLocked,
+      triggerReroute, setCurrentStepIndex, endNavigation,
+      setRemainingDist, setEta, setStepDistLabel, setArrivalClockTime])
 
   // ── Re-route when waypoints or destination change during navigation ─────
   useEffect(() => {

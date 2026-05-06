@@ -33,32 +33,39 @@ function speedState() {
 }
 
 export default function NavigationHUD() {
-  const endNavigation     = useStore(s => s.endNavigation)
-  const routeSteps        = useStore(s => s.routeSteps)
-  const currentStepIndex  = useStore(s => s.currentStepIndex)
-  const eta               = useStore(s => s.eta)
-  const remainingDist     = useStore(s => s.remainingDist)
-  const speedMPH          = useStore(s => s.speedMPH)
-  const showSpeedHUD      = useStore(s => s.showSpeedHUD)
-  const openAI            = useStore(s => s.openAI)
-  const setShowWaypoints  = useStore(s => s.setShowWaypoints)
-  const rerouteAvailable  = useStore(s => s.rerouteAvailable)
-  const rerouteTimeSave   = useStore(s => s.rerouteTimeSave)
-  const setRerouteAvail   = useStore(s => s.setRerouteAvailable)
-  const waypoints         = useStore(s => s.waypoints)
-  const destination       = useStore(s => s.destination)
-  const setShowRouteStops = useStore(s => s.setShowRouteStops)
-  const setShowNavSidebar = useStore(s => s.setShowNavSidebar)
-  const drivingView       = useStore(s => s.drivingView)
-  const toggleDrivingView = useStore(s => s.toggleDrivingView)
-
-  const isReroutingActive = useStore(s => s.isReroutingActive)
+  const endNavigation      = useStore(s => s.endNavigation)
+  const routeSteps         = useStore(s => s.routeSteps)
+  const currentStepIndex   = useStore(s => s.currentStepIndex)
+  const eta                = useStore(s => s.eta)
+  const remainingDist      = useStore(s => s.remainingDist)
+  const stepDistLabel      = useStore(s => s.stepDistLabel)
+  const arrivalClockTime   = useStore(s => s.arrivalClockTime)
+  const speedMPH           = useStore(s => s.speedMPH)
+  const showSpeedHUD       = useStore(s => s.showSpeedHUD)
+  const openAI             = useStore(s => s.openAI)
+  const rerouteAvailable   = useStore(s => s.rerouteAvailable)
+  const rerouteTimeSave    = useStore(s => s.rerouteTimeSave)
+  const setRerouteAvail    = useStore(s => s.setRerouteAvailable)
+  const waypoints          = useStore(s => s.waypoints)
+  const destination        = useStore(s => s.destination)
+  const setShowRouteStops  = useStore(s => s.setShowRouteStops)
+  const setShowNavSidebar  = useStore(s => s.setShowNavSidebar)
+  const drivingView        = useStore(s => s.drivingView)
+  const toggleDrivingView  = useStore(s => s.toggleDrivingView)
+  const isReroutingActive  = useStore(s => s.isReroutingActive)
 
   const totalStops = waypoints.length + (destination ? 1 : 0)
 
-  const step = routeSteps[currentStepIndex]
+  const step     = routeSteps[currentStepIndex]
   const nextStep = routeSteps[currentStepIndex + 1]
-  const state = speedState()
+  const state    = speedState()
+
+  // Live countdown: prefer the 1-second-refresh stepDistLabel; fall back to
+  // the static distanceLabel from the route until the first tick fires.
+  const liveStepDist = stepDistLabel || step?.distanceLabel || '—'
+
+  // Full natural-language instruction from Mapbox (e.g. "Turn right onto Oak Ave")
+  const instruction = step?.instruction ?? step?.bannerInstruction ?? step?.street ?? 'Continue'
 
   return (
     <>
@@ -82,22 +89,16 @@ export default function NavigationHUD() {
           </span>
         </motion.div>
 
-        {/* Distance + street */}
+        {/* Distance + instruction */}
         <div className={styles.stepInfo}>
-          <motion.div
-            className={styles.stepDist}
-            key={step?.distanceLabel}
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-          >
-            {step?.distanceLabel ?? '—'}
-          </motion.div>
-          <div className={styles.stepStreet}>
-            {step?.bannerInstruction ?? step?.street ?? 'Continue'}
-          </div>
+          {/* Live countdown to next maneuver — updates every 1 s */}
+          <div className={styles.stepDist}>{liveStepDist}</div>
+          {/* Full natural-language instruction */}
+          <div className={styles.stepStreet}>{instruction}</div>
           {nextStep && (
             <div className={styles.nextStep}>
-              then {getManeuverIcon(nextStep.maneuver, nextStep.modifier)} {nextStep.street}
+              then {getManeuverIcon(nextStep.maneuver, nextStep.modifier)}{' '}
+              {nextStep.instruction ?? nextStep.street}
             </div>
           )}
         </div>
@@ -213,8 +214,8 @@ export default function NavigationHUD() {
         transition={{ type: 'spring', stiffness: 350, damping: 35, delay: 0.1 }}
       >
         <div className={styles.tripStat}>
-          <div className={styles.tripValue}>{eta}</div>
-          <div className={styles.tripLabel}>ARRIVAL</div>
+          <div className={styles.tripValue}>{arrivalClockTime || eta}</div>
+          <div className={styles.tripLabel}>ARRIVAL · {eta}</div>
         </div>
 
         <div className={styles.tripDivider} />
