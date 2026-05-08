@@ -31,14 +31,29 @@ export async function searchPlaces(query, proximity = null) {
       const lat = f.geometry.coordinates[1]
       const lng = f.geometry.coordinates[0]
       const dist = proximity ? haversineM(proximity.lat, proximity.lng, lat, lng) : null
+
+      // Build a short, readable address subtitle
+      const street    = f.properties?.address || ''
+      const city      = f.context?.find(c => c.id?.startsWith('place.'))?.text || ''
+      const stateCode = f.context?.find(c => c.id?.startsWith('region.'))?.short_code?.replace('US-', '') || ''
+      let shortAddr
+      if (f.place_type?.[0] === 'poi') {
+        const parts = [street, city, stateCode].filter(Boolean)
+        shortAddr = parts.length ? parts.join(', ') : f.place_name
+      } else {
+        shortAddr = f.place_name
+      }
+
       return {
         id: f.id,
         name: f.text,
-        address: f.place_name,
+        address: shortAddr,
         lat,
         lng,
         distance: dist,
         category: f.properties?.category ?? null,
+        placeType: f.place_type?.[0] ?? 'address',
+        maki: f.properties?.maki ?? null,
       }
     }).sort((a, b) => {
       // For POI queries with proximity, sort by distance

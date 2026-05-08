@@ -125,6 +125,27 @@
   box-shadow: 0 8px 40px rgba(0,0,0,0.7);
 }
 
+/* Recent searches */
+.recentSection {
+  border-bottom: 0.5px solid var(--border-subtle);
+  padding-bottom: 4px;
+}
+.sectionHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 12px 16px 6px;
+}
+.clearRecentBtn {
+  background: none; border: none;
+  font-family: var(--font-ui); font-size: 12px; font-weight: 500;
+  color: var(--accent); cursor: pointer; padding: 0;
+}
+.clearRecentBtn:active { opacity: 0.6; }
+
+/* Emoji inside result icon box */
+.resultEmoji { font-size: 18px; line-height: 1; }
+
 .categories { padding: 12px 16px; }
 .sectionLabel {
   font-family: var(--font-ui); font-size: 10px; font-weight: 700;
