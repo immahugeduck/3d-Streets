@@ -6,6 +6,7 @@ import styles from './MapControls.module.css'
 
 export default function MapControls() {
   const [showStyles, setShowStyles] = useState(false)
+  const [saveToast, setSaveToast]   = useState('')
 
   const phase             = useStore(s => s.phase)
   const mapStyle          = useStore(s => s.mapStyle)
@@ -24,17 +25,25 @@ export default function MapControls() {
   // Hide during navigation/sketch
   if (phase === PHASE.NAVIGATING || phase === PHASE.SKETCHING) return null
 
+  function showToast(msg) {
+    setSaveToast(msg)
+    setTimeout(() => setSaveToast(''), 2000)
+  }
+
   function handleCompass() {
     if (destination) {
-      // Save current route if not already saved, or clear if same route is saved
       if (savedRoute && savedRoute.destination?.id === destination.id) {
         clearSavedRoute()
+        showToast('Route unsaved')
       } else {
         saveCurrentRoute()
+        showToast('Route saved')
       }
     } else if (savedRoute) {
-      // Restore the previously saved route
       restoreSavedRoute()
+      showToast(`Restoring: ${savedRoute.destination?.name ?? 'saved route'}`)
+    } else {
+      showToast('No route to save — search a destination first')
     }
   }
 
@@ -51,8 +60,23 @@ export default function MapControls() {
 
   return (
     <div className={styles.rail}>
+      {/* Save-route toast */}
+      <AnimatePresence>
+        {saveToast && (
+          <motion.div
+            className={styles.toast}
+            initial={{ opacity: 0, x: 12 }}
+            animate={{ opacity: 1, x: 0 }}
+            exit={{ opacity: 0, x: 12 }}
+            transition={{ duration: 0.2 }}
+          >
+            {saveToast}
+          </motion.div>
+        )}
+      </AnimatePresence>
+
       {/* Locate me */}
-      <button className={`${styles.btn} ${styles.accent}`} onClick={flyToUser} title="My location">
+      <button className={`${styles.btn} ${styles.accent}`} onClick={flyToUser} title="Go to my location">
         <LocateIcon />
       </button>
 

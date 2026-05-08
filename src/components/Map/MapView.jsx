@@ -332,10 +332,9 @@ function createUserPuck() {
 
 // ── Exported map utilities ────────────────────────────────────────────────
 export function flyToUser() {
-  const map   = window._3dstreetsMap
-  const store = window._3dstreetsStore
-  if (!map || !store) return
-  const loc = store.getState().userLocation
+  const map = window._3dstreetsMap
+  if (!map) return
+  const loc = useStore.getState().userLocation
   if (!loc) return
   map.flyTo({ center: [loc.lng, loc.lat], zoom: 16, pitch: 55, duration: 1200 })
 }
