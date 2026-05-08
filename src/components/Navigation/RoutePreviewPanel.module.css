@@ -83,6 +83,14 @@
 }
 .routeCard.shimmer { height: 90px; border: none; }
 
+.routeError {
+  padding: 16px;
+  color: #ff6b6b;
+  font-size: 13px;
+  text-align: center;
+  line-height: 1.4;
+}
+
 .bestBadge {
   position: absolute; top: 8px; right: 8px;
   font-family: var(--font-ui); font-size: 9px; font-weight: 800;

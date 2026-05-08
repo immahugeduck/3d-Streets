@@ -119,6 +119,24 @@ export function useNavigationProgress() {
 
     isRerouting.current = false
     setIsReroutingActive(false)
+
+    // If state changed while this reroute was in flight (blocked by isRerouting),
+    // the waypoints/destination useEffect already fired and was skipped. Detect
+    // that drift here and kick off another reroute immediately.
+    if (committedRef.current && useStore.getState().phase === PHASE.NAVIGATING) {
+      const latestWps  = useStore.getState().waypoints
+      const latestDest = useStore.getState().destination
+      if (latestDest) {
+        const latestIds = latestWps.map(w => w.id).join(',')
+        const latestKey = `${latestDest.lat},${latestDest.lng}`
+        if (
+          latestIds !== committedRef.current.waypointIds ||
+          latestKey !== committedRef.current.destKey
+        ) {
+          triggerReroute('state changed during previous reroute')
+        }
+      }
+    }
   }, [setRouteOptions, setSelectedRoute, setRouteSteps, setEta, setRemainingDist, setIsReroutingActive])
 
   // ── Step advancement + live ETA/distance + off-route detection ──────────

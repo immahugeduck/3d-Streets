@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { motion } from 'framer-motion'
 import useStore, { ROUTE_PREFS, PHASE } from '../../store/appStore'
 import { getDirections } from '../../services/mapboxService'
@@ -8,7 +8,9 @@ import styles from './RoutePreviewPanel.module.css'
 
 export default function RoutePreviewPanel() {
   const [loading, setLoading]     = useState(true)
+  const [routeError, setRouteError] = useState(null)
   const [aiSummary, setAiSummary] = useState('')
+  const loadTokenRef = useRef(0)
 
   const destination    = useStore(s => s.destination)
   const userLocation   = useStore(s => s.userLocation)
@@ -32,39 +34,50 @@ export default function RoutePreviewPanel() {
   }, [destination, routePref, waypoints.length])
 
   async function loadRoute() {
+    const token = ++loadTokenRef.current
     setLoading(true)
+    setRouteError(null)
+
     const pref = ROUTE_PREFS[routePref]
-    const origin = userLocation
 
-    const routes = await getDirections({
-      origin,
-      destination,
-      waypoints,
-      profile: pref.profile,
-      exclude: pref.exclude,
-    })
+    try {
+      const routes = await getDirections({
+        origin: userLocation,
+        destination,
+        waypoints,
+        profile: pref.profile,
+        exclude: pref.exclude,
+      })
 
-    setLoading(false)
-    if (!routes?.length) return
+      if (token !== loadTokenRef.current) return // stale — a newer request is in flight
 
-    setRouteOptions(routes)
-    setSelectedRoute(routes[0])
-    setRouteSteps(routes[0].steps)
-    setEta(routes[0].durationLabel)
-    setRemainingDist(routes[0].distanceLabel)
+      setLoading(false)
+      if (!routes?.length) {
+        setRouteError('No routes found. Try a different destination.')
+        return
+      }
 
-    // Draw routes on map
-    clearRoute()
-    routes.forEach((r, i) => drawRoute({ type: 'Feature', geometry: r.geometry }, i > 0))
-    fitRoute(routes[0].geometry.coordinates)
+      setRouteOptions(routes)
+      setSelectedRoute(routes[0])
+      setRouteSteps(routes[0].steps)
+      setEta(routes[0].durationLabel)
+      setRemainingDist(routes[0].distanceLabel)
 
-    // AI trip summary
-    const summary = await generateTripSummary({
-      distance: routes[0].distanceLabel,
-      duration: routes[0].durationLabel,
-      destination: destination.name,
-    })
-    if (summary) setAiSummary(summary)
+      clearRoute()
+      routes.forEach((r, i) => drawRoute({ type: 'Feature', geometry: r.geometry }, i > 0))
+      fitRoute(routes[0].geometry.coordinates)
+
+      const summary = await generateTripSummary({
+        distance: routes[0].distanceLabel,
+        duration: routes[0].durationLabel,
+        destination: destination.name,
+      })
+      if (token === loadTokenRef.current && summary) setAiSummary(summary)
+    } catch {
+      if (token !== loadTokenRef.current) return
+      setLoading(false)
+      setRouteError('Could not load route. Check your connection and try again.')
+    }
   }
 
   function go() {
@@ -124,6 +137,8 @@ export default function RoutePreviewPanel() {
             <div className={`${styles.routeCard} ${styles.shimmer}`} />
             <div className={`${styles.routeCard} ${styles.shimmer}`} />
           </>
+        ) : routeError ? (
+          <div className={styles.routeError}>{routeError}</div>
         ) : routeOptions.map((route, i) => (
           <button
             key={route.id}
