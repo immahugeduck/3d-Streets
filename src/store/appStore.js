@@ -9,38 +9,13 @@ export const PHASE = {
   AI_CHAT:       'AI_CHAT',
 }
 
-const PHASE_VALUES = new Set(Object.values(PHASE))
-
-function makeNavResetPatch(phase = PHASE.IDLE) {
-  return {
-    phase,
-    routeOptions:       [],
-    selectedRoute:      null,
-    routeSteps:         [],
-    currentStepIndex:   0,
-    currentLegIndex:    0,
-    legStats:           [],
-    eta:                '--:--',
-    remainingDist:      '— mi',
-    rerouteAvailable:   false,
-    rerouteTimeSave:    '',
-    showRouteStops:     false,
-    showNavSidebar:     false,
-    selectedStop:       null,
-    routeLocked:        false,
-    isReroutingActive:  false,
-    stepDistLabel:      '',
-    arrivalClockTime:   '',
-  }
-}
-
 // ── Map style definitions ─────────────────────────────────────────────────
 export const MAP_STYLES = {
   dark: {
-    uri:        'mapbox://styles/mapbox/standard',
-    label:      'Dark',
-    icon:       '🌑',
-    isStandard: true,   // Mapbox Standard style — uses config API, not manual layers
+    uri:         'mapbox://styles/mapbox/standard',
+    label:       'Dark',
+    icon:        '🌑',
+    isStandard:  true,
     lightPreset: 'night',
   },
   satellite: {
@@ -66,37 +41,49 @@ export const MAP_STYLES = {
 }
 
 // ── Route preference definitions ──────────────────────────────────────────
+// Smart = best route with live traffic.
+// Scenic = back roads, avoids highways and tolls.
 export const ROUTE_PREFS = {
-  fastest: {
-    label:   'Fastest',
-    icon:    '⚡',
-    profile: 'mapbox/driving-traffic',
-    exclude: null,
-  },
-  shortest: {
-    label:   'Shortest',
-    icon:    '📏',
-    profile: 'mapbox/driving',
-    exclude: null,
+  smart: {
+    label:        'Smart',
+    icon:         '⚡',
+    profile:      'mapbox/driving-traffic',
+    exclude:      null,
+    alternatives: true,
+    description:  'Fastest route with live traffic',
   },
   scenic: {
-    label:   'Scenic',
-    icon:    '🌿',
-    profile: 'mapbox/driving',
-    exclude: 'motorway',
+    label:        'Scenic',
+    icon:         '🌿',
+    profile:      'mapbox/driving',
+    exclude:      'motorway,toll',
+    alternatives: false,
+    description:  'Back roads, no highways or tolls',
   },
-  avoid_tolls: {
-    label:   'No Tolls',
-    icon:    '🚫',
-    profile: 'mapbox/driving-traffic',
-    exclude: 'toll',
-  },
-  avoid_highways: {
-    label:   'Local',
-    icon:    '🏘️',
-    profile: 'mapbox/driving-traffic',
-    exclude: 'motorway',
-  },
+}
+
+// ── Shared nav reset helper ───────────────────────────────────────────────
+function makeNavResetPatch(phase = PHASE.IDLE) {
+  return {
+    phase,
+    routeOptions:      [],
+    selectedRoute:     null,
+    routeSteps:        [],
+    currentStepIndex:  0,
+    currentLegIndex:   0,
+    legStats:          [],
+    eta:               '--:--',
+    remainingDist:     '— mi',
+    rerouteAvailable:  false,
+    rerouteTimeSave:   '',
+    showRouteStops:    false,
+    showNavSidebar:    false,
+    selectedStop:      null,
+    routeLocked:       false,
+    isReroutingActive: false,
+    stepDistLabel:     '',
+    arrivalClockTime:  '',
+  }
 }
 
 // ── Store ─────────────────────────────────────────────────────────────────
@@ -105,23 +92,20 @@ const useStore = create((set, get) => ({
   // ── App phase ─────────────────────────────────────────────────────────
   phase:     PHASE.IDLE,
   prevPhase: PHASE.IDLE,
-  setPhase:  (phase) => {
-    if (!PHASE_VALUES.has(phase)) return
-    set({ phase })
-  },
+  setPhase:  (phase) => set({ phase }),
 
   // ── Map config ────────────────────────────────────────────────────────
   mapStyle:    'dark',
   is3D:        true,
   showTraffic: false,
   mapRef:      null,
-  drivingView: true,  // First-person driving perspective during navigation
-  setMapStyle:    (mapStyle)    => set({ mapStyle }),
-  setIs3D:        (is3D)        => set({ is3D }),
-  setShowTraffic: (showTraffic) => set({ showTraffic }),
-  setMapRef:      (mapRef)      => set({ mapRef }),
-  setDrivingView: (drivingView) => set({ drivingView }),
-  toggleDrivingView: () => set(s => ({ drivingView: !s.drivingView })),
+  drivingView: true,
+  setMapStyle:       (mapStyle)    => set({ mapStyle }),
+  setIs3D:           (is3D)        => set({ is3D }),
+  setShowTraffic:    (showTraffic) => set({ showTraffic }),
+  setMapRef:         (mapRef)      => set({ mapRef }),
+  setDrivingView:    (drivingView) => set({ drivingView }),
+  toggleDrivingView: ()            => set(s => ({ drivingView: !s.drivingView })),
 
   // ── User location ─────────────────────────────────────────────────────
   userLocation: null,
@@ -132,24 +116,15 @@ const useStore = create((set, get) => ({
   // ── Route planning ────────────────────────────────────────────────────
   destination:   null,
   waypoints:     [],
-  routePref:     'fastest',
+  routePref:     'smart',
   routeOptions:  [],
   selectedRoute: null,
-  setDestination:     (destination) => {
-    if (!destination || destination.lat == null || destination.lng == null) return
-    set({
-      ...makeNavResetPatch(PHASE.ROUTE_PREVIEW),
-      destination,
-    })
-  },
-  setDestinationOnly: (destination) => {
-    if (!destination || destination.lat == null || destination.lng == null) return
-    set({ destination })
-  },
+  setDestination:     (destination) => set({ destination, phase: PHASE.ROUTE_PREVIEW }),
+  setDestinationOnly: (destination) => set({ destination }),
   setWaypoints:       (waypoints)   => set({
     waypoints: Array.isArray(waypoints) ? waypoints.filter(Boolean) : [],
   }),
-  addWaypoint:        (wp)          => {
+  addWaypoint: (wp) => {
     if (!wp || wp.lat == null || wp.lng == null) return
     set(s => {
       if (s.waypoints.some(x => x.id && wp.id && x.id === wp.id)) return {}
@@ -157,42 +132,36 @@ const useStore = create((set, get) => ({
       return { waypoints: [...s.waypoints, wp] }
     })
   },
-  removeWaypoint:     (id)          => set(s => ({
-    waypoints: s.waypoints.filter(w => w.id !== id),
+  removeWaypoint: (id) => set(s => ({
+    waypoints:    s.waypoints.filter(w => w.id !== id),
     selectedStop: s.selectedStop?.id === id ? null : s.selectedStop,
   })),
-  setRoutePref:     (routePref)     => set({ routePref }),
-  setRouteOptions:  (routeOptions)  => set({ routeOptions: Array.isArray(routeOptions) ? routeOptions : [] }),
+  setRoutePref:    (routePref)    => set({ routePref }),
+  setRouteOptions: (routeOptions) => set({ routeOptions: Array.isArray(routeOptions) ? routeOptions : [] }),
   setSelectedRoute: (selectedRoute) => set({
-    selectedRoute: selectedRoute ?? null,
-    routeSteps: Array.isArray(selectedRoute?.steps) ? selectedRoute.steps : [],
+    selectedRoute:    selectedRoute ?? null,
+    routeSteps:       Array.isArray(selectedRoute?.steps) ? selectedRoute.steps : [],
     currentStepIndex: 0,
   }),
 
   // ── Route locking ─────────────────────────────────────────────────────
-  // When locked: deviation warnings are suppressed, no auto-reroute prompt
   routeLocked: false,
   setRouteLocked:  (routeLocked) => set({ routeLocked }),
   toggleRouteLock: () => set(s => ({
     routeLocked:      !s.routeLocked,
-    // Dismiss any pending reroute banner when user locks the route
     rerouteAvailable: s.routeLocked ? s.rerouteAvailable : false,
     rerouteTimeSave:  s.routeLocked ? s.rerouteTimeSave  : '',
   })),
 
   // ── Multi-leg navigation ──────────────────────────────────────────────
-  // currentLegIndex: which stop we're currently heading toward (0 = first stop/destination)
-  // legStats: per-leg distance + ETA breakdown set when route loads
   currentLegIndex: 0,
-  legStats: [],       // [{ distanceLabel, durationLabel, distance, duration }]
+  legStats:        [],
   setLegStats: (legStats) => set({ legStats: Array.isArray(legStats) ? legStats : [] }),
   advanceLeg: () => {
     const { currentLegIndex, getAllStops } = get()
     const stops = getAllStops()
     const next  = currentLegIndex + 1
-
     if (next >= stops.length) {
-      // Completed all legs — end navigation
       set(makeNavResetPatch(PHASE.IDLE))
     } else {
       set({ currentLegIndex: next })
@@ -200,10 +169,10 @@ const useStore = create((set, get) => ({
   },
 
   // ── Navigation state ──────────────────────────────────────────────────
-  routeSteps:       [],
-  currentStepIndex: 0,
-  eta:              '--:--',
-  remainingDist:    '— mi',
+  routeSteps:        [],
+  currentStepIndex:  0,
+  eta:               '--:--',
+  remainingDist:     '— mi',
   speedMPH:          0,
   speedLimit:        65,
   showSpeedHUD:      true,
@@ -212,27 +181,27 @@ const useStore = create((set, get) => ({
   isReroutingActive: false,
   stepDistLabel:     '',
   arrivalClockTime:  '',
-  setRouteSteps:       (routeSteps)       => set(s => {
+  setRouteSteps: (routeSteps) => set(s => {
     const safeSteps = Array.isArray(routeSteps) ? routeSteps : []
-    const maxIndex = Math.max(0, safeSteps.length - 1)
+    const maxIndex  = Math.max(0, safeSteps.length - 1)
     return {
-      routeSteps: safeSteps,
+      routeSteps:       safeSteps,
       currentStepIndex: Math.min(s.currentStepIndex, maxIndex),
     }
   }),
   setCurrentStepIndex: (currentStepIndex) => set(s => {
-    const maxIndex = Math.max(0, (s.routeSteps?.length || 1) - 1)
+    const maxIndex  = Math.max(0, (s.routeSteps?.length || 1) - 1)
     const safeIndex = Number.isFinite(currentStepIndex)
       ? Math.min(Math.max(0, Math.floor(currentStepIndex)), maxIndex)
       : 0
     return { currentStepIndex: safeIndex }
   }),
-  setEta:              (eta)              => set({ eta }),
-  setRemainingDist:    (remainingDist)    => set({ remainingDist }),
-  setSpeedMPH:         (speedMPH)         => set({ speedMPH }),
-  setSpeedLimit:       (speedLimit)       => set({ speedLimit }),
-  setShowSpeedHUD:     (showSpeedHUD)     => set({ showSpeedHUD }),
-  setRerouteAvailable: (rerouteAvailable, rerouteTimeSave = '') =>
+  setEta:               (eta)               => set({ eta }),
+  setRemainingDist:     (remainingDist)     => set({ remainingDist }),
+  setSpeedMPH:          (speedMPH)          => set({ speedMPH }),
+  setSpeedLimit:        (speedLimit)        => set({ speedLimit }),
+  setShowSpeedHUD:      (showSpeedHUD)      => set({ showSpeedHUD }),
+  setRerouteAvailable:  (rerouteAvailable, rerouteTimeSave = '') =>
     set({ rerouteAvailable, rerouteTimeSave }),
   setIsReroutingActive: (isReroutingActive) => set({ isReroutingActive: Boolean(isReroutingActive) }),
   setStepDistLabel:     (stepDistLabel)     => set({ stepDistLabel }),
@@ -247,15 +216,15 @@ const useStore = create((set, get) => ({
       aiMessages: [
         ...s.aiMessages,
         {
-          id: msg.id ?? `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
-          role: msg.role,
+          id:      msg.id ?? `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
+          role:    msg.role,
           content: String(msg.content),
         },
       ],
     }))
   },
   setAIThinking: (aiThinking) => set({ aiThinking: Boolean(aiThinking) }),
-  clearAIChat: () => set({ aiMessages: [], aiThinking: false }),
+  clearAIChat:   ()            => set({ aiMessages: [], aiThinking: false }),
 
   // ── Panel visibility ──────────────────────────────────────────────────
   showPOI:        false,
@@ -271,7 +240,7 @@ const useStore = create((set, get) => ({
   setShowNavSidebar: (showNavSidebar) => set({ showNavSidebar }),
   setPoiCategory:    (poiCategory)    => set({ poiCategory }),
 
-  // ── Selected stop (for preview/highlight) ────────────────────────────
+  // ── Selected stop ────────────────────────────────────────────────────
   selectedStop: null,
   setSelectedStop: (selectedStop) => set({ selectedStop }),
 
@@ -279,11 +248,9 @@ const useStore = create((set, get) => ({
   startNavigation: () => {
     const { destination, selectedRoute, routeSteps } = get()
     if (!destination || !selectedRoute) return
-
     const nextSteps = Array.isArray(routeSteps) && routeSteps.length > 0
       ? routeSteps
       : (Array.isArray(selectedRoute.steps) ? selectedRoute.steps : [])
-
     set({
       phase:            PHASE.NAVIGATING,
       routeSteps:       nextSteps,
@@ -294,6 +261,8 @@ const useStore = create((set, get) => ({
       routeLocked:      false,
       rerouteAvailable: false,
       rerouteTimeSave:  '',
+      stepDistLabel:    '',
+      arrivalClockTime: '',
     })
   },
 
@@ -302,10 +271,9 @@ const useStore = create((set, get) => ({
   enterSketch: () => set({ phase: PHASE.SKETCHING }),
   exitSketch:  () => set({ phase: PHASE.IDLE }),
 
-  // Track prevPhase so AICopilot can return to the right state on close
   openAI: () => set(s => ({
     prevPhase: s.phase === PHASE.AI_CHAT ? (s.prevPhase || PHASE.IDLE) : s.phase,
-    phase: PHASE.AI_CHAT,
+    phase:     PHASE.AI_CHAT,
   })),
   closeAI: () => set(s => ({
     phase: s.prevPhase && s.prevPhase !== PHASE.AI_CHAT ? s.prevPhase : PHASE.IDLE,
@@ -330,7 +298,6 @@ const useStore = create((set, get) => ({
   clearSavedRoute: () => set({ savedRoute: null }),
 
   // ── Helper: get all stops in order ───────────────────────────────────
-  // Returns [waypoint1, waypoint2, ..., destination]
   getAllStops: () => {
     const { waypoints, destination } = get()
     const stops = waypoints.map((wp, i) => ({
