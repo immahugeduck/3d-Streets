@@ -348,15 +348,6 @@ export default function SketchOverlay() {
         <button
           className={styles.toolBtn}
           onClick={resetPins}
-          disabled={!canClear}
-        >
-          <UndoIcon />
-          <span>Undo</span>
-        </button>
-
-        <button
-          className={styles.toolBtn}
-          onClick={resetPins}
           disabled={!startPin || isWorking}
         >
           <TrashIcon />

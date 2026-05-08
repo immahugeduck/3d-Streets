@@ -6,27 +6,30 @@ const TOKEN = import.meta.env.VITE_MAPBOX_TOKEN || ''
 export async function searchPlaces(query, proximity = null) {
   if (!query || query.length < 2) return []
   const encoded = encodeURIComponent(query)
-  
+  const words = query.trim().split(/\s+/)
+
   // Detect if query looks like a full address (has numbers + street indicators)
   const looksLikeAddress = /\d+\s+\w+\s+(st|street|ave|avenue|rd|road|blvd|dr|drive|ln|lane|way|ct|court|pl|place)/i.test(query)
-  // Detect if query includes explicit city/state (e.g., "Nashville TN", "New York")
-  const hasExplicitLocation = /,\s*[A-Z]{2}$/i.test(query.trim()) || /\b(AL|AK|AZ|AR|CA|CO|CT|DE|FL|GA|HI|ID|IL|IN|IA|KS|KY|LA|ME|MD|MA|MI|MN|MS|MO|MT|NE|NV|NH|NJ|NM|NY|NC|ND|OH|OK|OR|PA|RI|SC|SD|TN|TX|UT|VT|VA|WA|WV|WI|WY)\b/i.test(query)
-  
-  // ALWAYS use proximity for POI-style queries (Walmart, parks, restaurants)
-  // Only skip proximity if it's clearly a full address or has explicit city/state
-  const useProximity = proximity && !looksLikeAddress && !hasExplicitLocation
+  // Detect explicit state code: "Nashville TN", "Walmart Greencastle IN"
+  const hasStateCode = /,\s*[A-Z]{2}$/i.test(query.trim()) || /\b(AL|AK|AZ|AR|CA|CO|CT|DE|FL|GA|HI|ID|IL|IN|IA|KS|KY|LA|ME|MD|MA|MI|MN|MS|MO|MT|NE|NV|NH|NJ|NM|NY|NC|ND|OH|OK|OR|PA|RI|SC|SD|TN|TX|UT|VT|VA|WA|WV|WI|WY)\b/i.test(query)
+  // Detect compound "BusinessName CityName" pattern — 2+ words, no address numbers
+  // In this case let Mapbox's text engine handle location context; only apply proximity as a
+  // light geographic bias, never re-sort results by raw user distance.
+  const isCompoundPoiQuery = words.length >= 2 && !looksLikeAddress && !hasStateCode
+
+  // Always pass proximity to Mapbox for geographic bias, but skip it for clear address queries
+  const useProximity = proximity && !looksLikeAddress
   const prox = useProximity ? `&proximity=${proximity.lng},${proximity.lat}` : ''
-  
-  // Prioritize POI for short queries, include address/place for longer ones
-  const types = query.trim().split(/\s+/).length <= 3 ? 'poi,place,address' : 'address,poi,place'
-  
-  const url = `https://api.mapbox.com/geocoding/v5/mapbox.places/${encoded}.json?access_token=${TOKEN}&limit=8&types=${types}${prox}`
+
+  // Prioritize POI types for short or compound queries (business name searches)
+  const types = words.length <= 3 ? 'poi,place,address' : 'address,poi,place'
+
+  const url = `https://api.mapbox.com/geocoding/v5/mapbox.places/${encoded}.json?access_token=${TOKEN}&limit=8&types=${types}&country=US${prox}`
 
   try {
     const res = await fetch(url)
     const data = await res.json()
-    
-    // Calculate distance for each result if we have user location
+
     return (data.features || []).map(f => {
       const lat = f.geometry.coordinates[1]
       const lng = f.geometry.coordinates[0]
@@ -56,11 +59,12 @@ export async function searchPlaces(query, proximity = null) {
         maki: f.properties?.maki ?? null,
       }
     }).sort((a, b) => {
-      // For POI queries with proximity, sort by distance
-      if (useProximity && a.distance != null && b.distance != null) {
+      // Single-word POI queries: sort nearby results first
+      // Compound queries ("Walmart Greencastle"): trust Mapbox's text relevance order
+      if (!isCompoundPoiQuery && useProximity && a.distance != null && b.distance != null) {
         return a.distance - b.distance
       }
-      return 0 // keep Mapbox relevance order otherwise
+      return 0
     })
   } catch {
     return []
