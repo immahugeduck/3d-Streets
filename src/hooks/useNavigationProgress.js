@@ -149,6 +149,7 @@ export function useNavigationProgress() {
         lastStep.location[1], lastStep.location[0]
       )
       if (dist < STEP_ADVANCE_THRESHOLD_M) {
+        clearRoute()
         endNavigation()
         return
       }

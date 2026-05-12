@@ -1,6 +1,7 @@
 import { useEffect } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import useStore from '../../store/appStore'
+import { clearRoute } from '../Map/MapView'
 import styles from './NavigationHUD.module.css'
 
 // Maneuver type → icon mapping
@@ -66,6 +67,10 @@ export default function NavigationHUD() {
 
   // Full natural-language instruction from Mapbox (e.g. "Turn right onto Oak Ave")
   const instruction = step?.instruction ?? step?.bannerInstruction ?? step?.street ?? 'Continue'
+  const handleEndNavigation = () => {
+    clearRoute()
+    endNavigation()
+  }
 
   return (
     <>
@@ -104,7 +109,7 @@ export default function NavigationHUD() {
         </div>
 
         {/* End nav */}
-        <button className={styles.endBtn} onClick={endNavigation}>✕</button>
+        <button className={styles.endBtn} onClick={handleEndNavigation}>✕</button>
 
         {/* Driving view toggle */}
         <button
