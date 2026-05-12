@@ -190,11 +190,11 @@ export default function MapView() {
       // Windshield perspective: lower horizon with stronger pitch and
       // speed-aware look-ahead so motion feels like cockpit driving.
       const clampedSpeed = Math.max(0, Math.min(speedMPH ?? 0, MAX_DRIVING_SPEED_MPH))
-      const LOOK_AHEAD_M = BASE_LOOK_AHEAD_M + (clampedSpeed * SPEED_LOOK_AHEAD_FACTOR)
+      const lookAheadM = BASE_LOOK_AHEAD_M + (clampedSpeed * SPEED_LOOK_AHEAD_FACTOR)
       const bearingRad   = bearing * (Math.PI / 180)
       const latRad       = userLocation.lat * (Math.PI / 180)
-      const dLat = (LOOK_AHEAD_M * Math.cos(bearingRad)) / 111320
-      const dLng = (LOOK_AHEAD_M * Math.sin(bearingRad)) / (111320 * Math.cos(latRad))
+      const dLat = (lookAheadM * Math.cos(bearingRad)) / 111320
+      const dLng = (lookAheadM * Math.sin(bearingRad)) / (111320 * Math.cos(latRad))
 
       map.easeTo({
         center:   [userLocation.lng + dLng, userLocation.lat + dLat],
