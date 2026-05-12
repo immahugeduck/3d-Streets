@@ -10,6 +10,9 @@ const ROUTE_COLOR        = '#FF9500'  // neon orange primary line
 const ROUTE_CASING_COLOR = '#7A3800'  // dark burnt-orange border (creates depth)
 const ROUTE_GLOW_COLOR   = '#FF6600'  // slightly redder for the bloom effect
 const ROUTE_ALT_COLOR    = '#5A4030'  // muted brown for alternate routes
+const MAX_DRIVING_SPEED_MPH    = 85    // cap camera look-ahead growth at highway speed
+const BASE_LOOK_AHEAD_M        = 55    // forward anchor even when near stopped
+const SPEED_LOOK_AHEAD_FACTOR  = 0.9   // extra meters of look-ahead per MPH
 
 // ── Module-level caches ───────────────────────────────────────────────────
 let _drawnRoutes      = []
@@ -34,6 +37,7 @@ export default function MapView() {
   const showTraffic     = useStore(s => s.showTraffic)
   const userLocation    = useStore(s => s.userLocation)
   const userHeading     = useStore(s => s.userHeading)
+  const speedMPH        = useStore(s => s.speedMPH)
   const phase           = useStore(s => s.phase)
   const drivingView     = useStore(s => s.drivingView)
 
@@ -183,18 +187,19 @@ export default function MapView() {
       : map.getBearing()
 
     if (drivingView) {
-      // Hood-of-car perspective: project the camera center 80 m ahead along
-      // the heading so the device position sits near the bottom of the screen.
-      const LOOK_AHEAD_M = 80
+      // Windshield perspective: lower horizon with stronger pitch and
+      // speed-aware look-ahead so motion feels like cockpit driving.
+      const clampedSpeed = Math.max(0, Math.min(speedMPH ?? 0, MAX_DRIVING_SPEED_MPH))
+      const lookAheadM = BASE_LOOK_AHEAD_M + (clampedSpeed * SPEED_LOOK_AHEAD_FACTOR)
       const bearingRad   = bearing * (Math.PI / 180)
       const latRad       = userLocation.lat * (Math.PI / 180)
-      const dLat = (LOOK_AHEAD_M * Math.cos(bearingRad)) / 111320
-      const dLng = (LOOK_AHEAD_M * Math.sin(bearingRad)) / (111320 * Math.cos(latRad))
+      const dLat = (lookAheadM * Math.cos(bearingRad)) / 111320
+      const dLng = (lookAheadM * Math.sin(bearingRad)) / (111320 * Math.cos(latRad))
 
       map.easeTo({
         center:   [userLocation.lng + dLng, userLocation.lat + dLat],
-        zoom:     18.5,
-        pitch:    72,
+        zoom:     19,
+        pitch:    78,
         bearing,
         duration: 250,
       })
@@ -207,7 +212,7 @@ export default function MapView() {
         duration: 500,
       })
     }
-  }, [userLocation, userHeading, phase, is3D, drivingView])
+  }, [userLocation, userHeading, phase, is3D, drivingView, speedMPH])
 
   return <div ref={containerRef} className={styles.mapContainer} />
 }
