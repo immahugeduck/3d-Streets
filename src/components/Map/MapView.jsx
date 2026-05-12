@@ -34,6 +34,7 @@ export default function MapView() {
   const showTraffic     = useStore(s => s.showTraffic)
   const userLocation    = useStore(s => s.userLocation)
   const userHeading     = useStore(s => s.userHeading)
+  const speedMPH        = useStore(s => s.speedMPH)
   const phase           = useStore(s => s.phase)
   const drivingView     = useStore(s => s.drivingView)
 
@@ -183,9 +184,10 @@ export default function MapView() {
       : map.getBearing()
 
     if (drivingView) {
-      // Hood-of-car perspective: project the camera center 80 m ahead along
-      // the heading so the device position sits near the bottom of the screen.
-      const LOOK_AHEAD_M = 80
+      // Windshield perspective: lower horizon with stronger pitch and
+      // speed-aware look-ahead so motion feels like cockpit driving.
+      const clampedSpeed = Math.max(0, Math.min(speedMPH ?? 0, 85))
+      const LOOK_AHEAD_M = 55 + (clampedSpeed * 0.9)
       const bearingRad   = bearing * (Math.PI / 180)
       const latRad       = userLocation.lat * (Math.PI / 180)
       const dLat = (LOOK_AHEAD_M * Math.cos(bearingRad)) / 111320
@@ -193,8 +195,8 @@ export default function MapView() {
 
       map.easeTo({
         center:   [userLocation.lng + dLng, userLocation.lat + dLat],
-        zoom:     18.5,
-        pitch:    72,
+        zoom:     18.9,
+        pitch:    78,
         bearing,
         duration: 250,
       })
@@ -207,7 +209,7 @@ export default function MapView() {
         duration: 500,
       })
     }
-  }, [userLocation, userHeading, phase, is3D, drivingView])
+  }, [userLocation, userHeading, phase, is3D, drivingView, speedMPH])
 
   return <div ref={containerRef} className={styles.mapContainer} />
 }

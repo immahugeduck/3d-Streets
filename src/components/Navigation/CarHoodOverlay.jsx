@@ -17,6 +17,11 @@ export default function CarHoodOverlay() {
       exit={{ y: 120, opacity: 0 }}
       transition={{ type: 'spring', stiffness: 280, damping: 28 }}
     >
+      <div className={styles.windshieldVignette} />
+      <div className={styles.windshieldPillarLeft} />
+      <div className={styles.windshieldPillarRight} />
+      <div className={styles.windshieldGlare} />
+
       <svg
         className={styles.hood}
         viewBox="0 0 800 240"
