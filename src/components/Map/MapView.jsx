@@ -198,7 +198,7 @@ export default function MapView() {
 
       map.easeTo({
         center:   [userLocation.lng + dLng, userLocation.lat + dLat],
-        zoom:     18.9,
+        zoom:     19,
         pitch:    78,
         bearing,
         duration: 250,
