@@ -29,6 +29,7 @@ export default function MapView() {
   const userMarkerRef       = useRef(null)
   const lastCameraUpdateRef = useRef(0)
   const hasCenteredOnUser = useRef(false)
+  const savedPinMarkersRef = useRef([])
 
   const setMapRef       = useStore(s => s.setMapRef)
   const setUserLocation = useStore(s => s.setUserLocation)
@@ -40,6 +41,10 @@ export default function MapView() {
   const speedMPH        = useStore(s => s.speedMPH)
   const phase           = useStore(s => s.phase)
   const drivingView     = useStore(s => s.drivingView)
+  const cockpitMode     = useStore(s => s.cockpitMode)
+  const savedPins       = useStore(s => s.savedPins)
+  const pinDropMode     = useStore(s => s.pinDropMode)
+  const addSavedPin     = useStore(s => s.addSavedPin)
 
   // ── Map init ───────────────────────────────────────────────────────────
   useEffect(() => {
@@ -173,6 +178,44 @@ export default function MapView() {
     }
   }, [phase, drivingView, is3D])
 
+
+
+  // ── Tap-to-save map pins ──────────────────────────────────────────────
+  useEffect(() => {
+    const map = mapRef.current
+    if (!map) return
+
+    const onMapClick = (evt) => {
+      if (!pinDropMode) return
+      const { lng, lat } = evt.lngLat
+      addSavedPin({ lng, lat, name: `Pinned @ ${lat.toFixed(4)}, ${lng.toFixed(4)}` })
+    }
+
+    map.on('click', onMapClick)
+    return () => map.off('click', onMapClick)
+  }, [pinDropMode, addSavedPin])
+
+  // ── Saved pin markers ─────────────────────────────────────────────────
+  useEffect(() => {
+    const map = mapRef.current
+    if (!map) return
+
+    savedPinMarkersRef.current.forEach(marker => marker.remove())
+    savedPinMarkersRef.current = savedPins.map((pin) => {
+      const el = document.createElement('div')
+      el.className = styles.savedPin
+      el.innerHTML = '<span>📍</span>'
+      return new mapboxgl.Marker({ element: el, anchor: 'bottom' })
+        .setLngLat([pin.lng, pin.lat])
+        .setPopup(new mapboxgl.Popup({ offset: 14 }).setText(pin.name))
+        .addTo(map)
+    })
+
+    return () => {
+      savedPinMarkersRef.current.forEach(marker => marker.remove())
+      savedPinMarkersRef.current = []
+    }
+  }, [savedPins])
   // ── Camera follow during navigation ───────────────────────────────────
   useEffect(() => {
     const map = mapRef.current
@@ -196,12 +239,18 @@ export default function MapView() {
       const dLat = (lookAheadM * Math.cos(bearingRad)) / 111320
       const dLng = (lookAheadM * Math.sin(bearingRad)) / (111320 * Math.cos(latRad))
 
+      const cockpitTuning = {
+        comfort: { zoom: 18.4, pitch: 72, duration: 320 },
+        sport:   { zoom: 19.2, pitch: 80, duration: 220 },
+        cinematic:{ zoom: 18.8, pitch: 76, duration: 420 },
+      }[cockpitMode] || { zoom: 19, pitch: 78, duration: 250 }
+
       map.easeTo({
         center:   [userLocation.lng + dLng, userLocation.lat + dLat],
-        zoom:     19,
-        pitch:    78,
+        zoom:     cockpitTuning.zoom,
+        pitch:    cockpitTuning.pitch,
         bearing,
-        duration: 250,
+        duration: cockpitTuning.duration,
       })
     } else {
       map.easeTo({
@@ -212,7 +261,7 @@ export default function MapView() {
         duration: 500,
       })
     }
-  }, [userLocation, userHeading, phase, is3D, drivingView, speedMPH])
+  }, [userLocation, userHeading, phase, is3D, drivingView, speedMPH, cockpitMode])
 
   return <div ref={containerRef} className={styles.mapContainer} />
 }

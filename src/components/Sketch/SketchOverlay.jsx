@@ -1,6 +1,6 @@
 import { useRef, useEffect, useState, useCallback } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
-import useStore from '../../store/appStore'
+import useStore, { PHASE } from '../../store/appStore'
 import { getDirections } from '../../services/mapboxService'
 import { drawRoute, fitRoute } from '../Map/MapView'
 import styles from './SketchOverlay.module.css'
@@ -29,6 +29,7 @@ export default function SketchOverlay() {
   const mapRef           = useStore(s => s.mapRef)
   const setSelectedRoute = useStore(s => s.setSelectedRoute)
   const setRouteOptions  = useStore(s => s.setRouteOptions)
+  const setDestinationOnly = useStore(s => s.setDestinationOnly)
 
   // ── Canvas sizing ─────────────────────────────────────────────────────
   useEffect(() => {
@@ -204,13 +205,19 @@ export default function SketchOverlay() {
       aiDescription: 'Route along your drawn path',
     }
 
+    setDestinationOnly({
+      id: 'sketch-destination',
+      name: 'Sketch destination',
+      lng: endPin.lng,
+      lat: endPin.lat,
+    })
     setRouteOptions([syntheticRoute])
     setSelectedRoute(syntheticRoute)
     setDrawMode('done')
 
     setTimeout(() => {
       exitSketch()
-      setPhase('route_preview')
+      setPhase(PHASE.ROUTE_PREVIEW)
     }, 900)
   }
 
