@@ -7,7 +7,7 @@ const STOP_ICONS = ['⛳', '📍', '🏁', '⭐', '🔵', '🟢', '🟡']
 
 function getStopIcon(stop) {
   if (stop.isFinal) return '🏁'
-  return STOP_ICONS[((stop.index - 1) % (STOP_ICONS.length - 1))]
+  return STOP_ICONS[((stop.index - 1) % STOP_ICONS.length)]
 }
 
 export default function RouteStopsPanel() {

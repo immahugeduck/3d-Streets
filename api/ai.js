@@ -12,9 +12,12 @@ const TIMEOUT_MS = 28000 // stay under Vercel's 30s function limit
 const REQUEST_ID_HEADER = 'X-Request-Id'
 const CLIENT_REQUEST_ID_HEADER = 'x-client-request-id'
 
+const MAX_BODY_BYTES = 32 * 1024 // 32 KB — generous for any valid action payload
+
 const ERRORS = {
   BAD_METHOD: 'BAD_METHOD',
   RATE_LIMITED: 'RATE_LIMITED',
+  BODY_TOO_LARGE: 'BODY_TOO_LARGE',
   BAD_JSON: 'BAD_JSON',
   BAD_BODY: 'BAD_BODY',
   BAD_PAYLOAD: 'BAD_PAYLOAD',
@@ -288,6 +291,17 @@ export default async function handler(req, res) {
       status: 429,
       error: 'Too many requests. Please slow down.',
       code: ERRORS.RATE_LIMITED,
+      requestId,
+    })
+  }
+
+  // Body size guard (Content-Length is advisory, but catches obvious abuse)
+  const contentLength = parseInt(req.headers['content-length'] || '0', 10)
+  if (!isNaN(contentLength) && contentLength > MAX_BODY_BYTES) {
+    return respondError(res, {
+      status: 413,
+      error: 'Request body too large.',
+      code: ERRORS.BODY_TOO_LARGE,
       requestId,
     })
   }
