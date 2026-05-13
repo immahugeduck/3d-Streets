@@ -165,3 +165,106 @@
     font-size: 10px;
   }
 }
+
+
+.cluster {
+  display: flex;
+  align-items: flex-end;
+  gap: 12px;
+}
+
+.steeringWheel {
+  width: 94px;
+  height: 94px;
+  border-radius: 50%;
+  border: 8px solid rgba(14, 18, 28, 0.95);
+  box-shadow: inset 0 0 0 2px rgba(120, 130, 150, 0.15), 0 10px 24px rgba(0, 0, 0, 0.5);
+  background: radial-gradient(circle at 50% 30%, rgba(255, 255, 255, 0.12), rgba(30, 34, 48, 0.95));
+  position: relative;
+}
+
+.steeringWheel::before,
+.steeringWheel::after {
+  content: '';
+  position: absolute;
+  background: rgba(9, 12, 20, 0.95);
+  border-radius: 20px;
+}
+
+.steeringWheel::before {
+  width: 12px;
+  height: 50px;
+  left: 50%;
+  top: 4px;
+  transform: translateX(-50%);
+}
+
+.steeringWheel::after {
+  width: 48px;
+  height: 12px;
+  left: 50%;
+  bottom: 18px;
+  transform: translateX(-50%);
+}
+
+.wheelCenter {
+  position: absolute;
+  inset: 27px;
+  border-radius: 50%;
+  background: radial-gradient(circle at 35% 25%, rgba(255, 255, 255, 0.18), rgba(20, 24, 36, 0.98));
+  border: 1px solid rgba(220, 230, 255, 0.12);
+}
+
+.navDisplay {
+  flex: 1;
+  min-width: 0;
+  margin: 0 10px;
+  background: rgba(4, 7, 12, 0.9);
+  border: 1px solid rgba(0, 212, 255, 0.25);
+  border-radius: 12px;
+  padding: 10px 12px;
+  box-shadow: 0 0 22px rgba(0, 212, 255, 0.08);
+}
+
+.navDisplayTop { display: flex; align-items: baseline; gap: 10px; }
+.navManeuver { font-size: 26px; color: var(--accent, #00d4ff); line-height: 1; }
+.navDistance { font-size: 21px; font-weight: 800; letter-spacing: -0.01em; }
+.navInstruction {
+  margin-top: 4px;
+  font-size: 12px;
+  color: var(--text-secondary, #a6afbc);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.navMeta {
+  margin-top: 8px;
+  display: flex;
+  justify-content: space-between;
+  gap: 8px;
+  font-size: 10px;
+  letter-spacing: 0.08em;
+  color: var(--text-muted, #778091);
+  text-transform: uppercase;
+}
+.navNext { color: #89e8ff; }
+
+@media (max-width: 640px) {
+  .dashboard {
+    padding: 0 16px;
+    bottom: calc(84px + var(--safe-bottom, 0px));
+  }
+
+  .steeringWheel {
+    width: 72px;
+    height: 72px;
+    border-width: 6px;
+  }
+
+  .wheelCenter { inset: 20px; }
+
+  .speedValue { font-size: 26px; }
+  .speedIndicator { padding: 8px 12px; }
+  .navDisplay { padding: 8px 10px; }
+  .navDistance { font-size: 18px; }
+}

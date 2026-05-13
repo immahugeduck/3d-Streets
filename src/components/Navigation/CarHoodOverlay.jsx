@@ -2,10 +2,38 @@ import { motion } from 'framer-motion'
 import useStore from '../../store/appStore'
 import styles from './CarHoodOverlay.module.css'
 
+const MANEUVER_ICONS = {
+  'turn-left': '↰',
+  'turn-right': '↱',
+  'turn-slight-left': '↖',
+  'turn-slight-right': '↗',
+  'turn-sharp-left': '⬐',
+  'turn-sharp-right': '⬏',
+  uturn: '↩',
+  roundabout: '↻',
+  merge: '⤵',
+  arrive: '📍',
+  depart: '🚀',
+  straight: '↑',
+  default: '↑',
+}
+
+function getManeuverIcon(type, modifier) {
+  if (!type) return '↑'
+  const key = modifier ? `${type}-${modifier}`.replace(/ /g, '-') : type
+  return MANEUVER_ICONS[key] ?? MANEUVER_ICONS[type] ?? MANEUVER_ICONS.default
+}
+
 export default function CarHoodOverlay() {
   const speedMPH       = useStore(s => s.speedMPH)
   const drivingView    = useStore(s => s.drivingView)
   const toggleDrivingView = useStore(s => s.toggleDrivingView)
+  const routeSteps     = useStore(s => s.routeSteps)
+  const currentStepIndex = useStore(s => s.currentStepIndex)
+  const remainingDist  = useStore(s => s.remainingDist)
+
+  const step = routeSteps[currentStepIndex]
+  const nextStep = routeSteps[currentStepIndex + 1]
 
   if (!drivingView) return null
 
@@ -179,9 +207,27 @@ export default function CarHoodOverlay() {
 
       {/* ── Dashboard overlay ── */}
       <div className={styles.dashboard}>
-        <div className={styles.speedIndicator}>
-          <span className={styles.speedValue}>{Math.round(speedMPH)}</span>
-          <span className={styles.speedUnit}>MPH</span>
+        <div className={styles.cluster}>
+          <div className={styles.steeringWheel} aria-hidden="true">
+            <div className={styles.wheelCenter} />
+          </div>
+
+          <div className={styles.speedIndicator}>
+            <span className={styles.speedValue}>{Math.round(speedMPH)}</span>
+            <span className={styles.speedUnit}>MPH</span>
+          </div>
+        </div>
+
+        <div className={styles.navDisplay}>
+          <div className={styles.navDisplayTop}>
+            <span className={styles.navManeuver}>{getManeuverIcon(step?.maneuver, step?.modifier)}</span>
+            <span className={styles.navDistance}>{step?.distanceLabel ?? '—'}</span>
+          </div>
+          <div className={styles.navInstruction}>{step?.instruction ?? 'Continue on current road'}</div>
+          <div className={styles.navMeta}>
+            <span className={styles.navNext}>NEXT {getManeuverIcon(nextStep?.maneuver, nextStep?.modifier)}</span>
+            <span>{remainingDist || '—'} left</span>
+          </div>
         </div>
 
         <button
