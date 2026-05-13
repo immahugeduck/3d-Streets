@@ -37,11 +37,19 @@ export function useNavigationProgress() {
   const isRerouting       = useRef(false)
   const offRouteCount     = useRef(0)
   const lastEtaUpdate     = useRef(0)
+  const prevPhaseRef      = useRef(phase)
 
   // Keep location ref fresh
   useEffect(() => {
     userLocationRef.current = userLocation
   }, [userLocation])
+
+  useEffect(() => {
+    if (prevPhaseRef.current === PHASE.NAVIGATING && phase !== PHASE.NAVIGATING) {
+      clearRoute()
+    }
+    prevPhaseRef.current = phase
+  }, [phase])
 
   // ── Snapshot of route state at navigation start ─────────────────────────
   const committedRef = useRef(null)

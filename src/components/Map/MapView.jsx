@@ -6,10 +6,10 @@ import styles from './MapView.module.css'
 mapboxgl.accessToken = import.meta.env.VITE_MAPBOX_TOKEN || ''
 
 // ── Route color constants — change these to retheme the route line ─────────
-const ROUTE_COLOR        = '#FF9500'  // neon orange primary line
-const ROUTE_CASING_COLOR = '#7A3800'  // dark burnt-orange border (creates depth)
-const ROUTE_GLOW_COLOR   = '#FF6600'  // slightly redder for the bloom effect
-const ROUTE_ALT_COLOR    = '#5A4030'  // muted brown for alternate routes
+const ROUTE_COLOR        = '#39D0FF'  // bright cyan primary line
+const ROUTE_CASING_COLOR = '#0B2A4A'  // deep navy border for contrast
+const ROUTE_GLOW_COLOR   = '#1EA7FF'  // vivid blue bloom
+const ROUTE_ALT_COLOR    = '#7A8796'  // subdued slate for alternate routes
 const MAX_DRIVING_SPEED_MPH    = 85    // cap camera look-ahead growth at highway speed
 const BASE_LOOK_AHEAD_M        = 55    // forward anchor even when near stopped
 const SPEED_LOOK_AHEAD_FACTOR  = 0.9   // extra meters of look-ahead per MPH
@@ -164,14 +164,14 @@ export default function MapView() {
   useEffect(() => {
     if (!userMarkerRef.current) return
     const el = userMarkerRef.current.getElement()
-    if (phase === PHASE.NAVIGATING && drivingView) {
+    if (phase === PHASE.NAVIGATING && (drivingView || is3D)) {
       el.style.opacity       = '0'
       el.style.pointerEvents = 'none'
     } else {
       el.style.opacity       = '1'
       el.style.pointerEvents = 'auto'
     }
-  }, [phase, drivingView])
+  }, [phase, drivingView, is3D])
 
   // ── Camera follow during navigation ───────────────────────────────────
   useEffect(() => {
@@ -383,6 +383,7 @@ function _applyRouteToMap(map, geojson, isAlternate = false) {
         'line-width':   ['interpolate', ['linear'], ['zoom'], 10, 12, 16, 22],
         'line-blur':    10,
         'line-opacity': 0.3,
+        'line-emissive-strength': 0.75,
       },
       layout: { 'line-cap': 'round', 'line-join': 'round' },
     })
@@ -394,6 +395,7 @@ function _applyRouteToMap(map, geojson, isAlternate = false) {
         'line-color':   ROUTE_CASING_COLOR,
         'line-width':   ['interpolate', ['linear'], ['zoom'], 10, 10, 16, 14],
         'line-opacity': 0.9,
+        'line-emissive-strength': 0.2,
       },
       layout: { 'line-cap': 'round', 'line-join': 'round' },
     })
@@ -409,6 +411,7 @@ function _applyRouteToMap(map, geojson, isAlternate = false) {
         ? ['interpolate', ['linear'], ['zoom'], 10, 3, 16, 5]
         : ['interpolate', ['linear'], ['zoom'], 10, 6, 16, 9],
       'line-opacity': isAlternate ? 0.55 : 1,
+      'line-emissive-strength': isAlternate ? 0.1 : 0.95,
     },
     layout: { 'line-cap': 'round', 'line-join': 'round' },
   })
