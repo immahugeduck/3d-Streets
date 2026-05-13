@@ -15,7 +15,7 @@ const QUICK_PROMPTS = [
 
 const TAG_DESTINATION = 'DESTINATION'
 const TAG_WAYPOINT = 'WAYPOINT'
-const DESTINATION_INTENT_RE = /\b(go to|take me to|navigate to|direction(?:s)? to|route to|find|search for|locate|closest|nearest)\b/i
+const DESTINATION_INTENT_RE = /\b(go to|take me to|navigate to|directions? to|route to|find|search for|locate|closest|nearest)\b/i
 
 function extractActionTag(text, tag) {
   const match = text.match(new RegExp(`(?:^|\\n)\\s*${tag}::([^\\n]+)`, 'i'))
@@ -101,19 +101,24 @@ export default function AICopilot() {
     const destTag = extractActionTag(reply, TAG_DESTINATION)
     const wpTag   = extractActionTag(reply, TAG_WAYPOINT)
     let resolvedDestination = null
+    let attemptedDestinationLookup = false
 
     if (destTag) {
+      attemptedDestinationLookup = true
       resolvedDestination = await handleAIDestination(destTag)
     } else if (wpTag) {
       await handleAIWaypoint(wpTag)
     } else if (!destination && DESTINATION_INTENT_RE.test(userText)) {
+      attemptedDestinationLookup = true
       resolvedDestination = await handleNaturalLanguageDestination(userText)
     }
 
     if (!cleanReply) {
       cleanReply = resolvedDestination
         ? `Got it — heading to **${resolvedDestination.name}**.`
-        : 'Got it.'
+        : attemptedDestinationLookup
+          ? `I couldn't find that destination yet. Try adding a city or state.`
+          : 'Got it.'
     }
 
     addMessage({ role: 'assistant', content: cleanReply })
@@ -142,6 +147,9 @@ export default function AICopilot() {
 
   async function handleNaturalLanguageDestination(text) {
     const parsed = await parseDestination(text, userLocation)
+    if (!parsed?.name) {
+      console.warn('[AICopilot] parseDestination returned no structured place', { text })
+    }
     const destinationQuery = parsed?.name
       ? (parsed.address ? `${parsed.name}, ${parsed.address}` : parsed.name)
       : text
