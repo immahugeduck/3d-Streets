@@ -16,17 +16,19 @@ const QUICK_PROMPTS = [
 const TAG_DESTINATION = 'DESTINATION'
 const TAG_WAYPOINT = 'WAYPOINT'
 const DESTINATION_INTENT_RE = /\b(go to|take me to|navigate to|directions? to|route to|find|search for|locate|closest|nearest)\b/i
+const ACTION_TAG_REGEX = {
+  [TAG_DESTINATION]: /(?:^|\n)\s*DESTINATION::([^\n]+)/i,
+  [TAG_WAYPOINT]: /(?:^|\n)\s*WAYPOINT::([^\n]+)/i,
+}
+const ACTION_TAG_STRIP_REGEX = /(?:^|\n)\s*(?:DESTINATION|WAYPOINT)::[^\n]+/gi
 
 function extractActionTag(text, tag) {
-  const match = text.match(new RegExp(`(?:^|\\n)\\s*${tag}::([^\\n]+)`, 'i'))
+  const match = text.match(ACTION_TAG_REGEX[tag])
   return match?.[1]?.trim() || ''
 }
 
 function stripActionTags(text) {
-  return text
-    .replace(new RegExp(`(?:^|\\n)\\s*${TAG_DESTINATION}::[^\\n]+`, 'gi'), '')
-    .replace(new RegExp(`(?:^|\\n)\\s*${TAG_WAYPOINT}::[^\\n]+`, 'gi'), '')
-    .trim()
+  return text.replace(ACTION_TAG_STRIP_REGEX, '').trim()
 }
 
 export default function AICopilot() {
