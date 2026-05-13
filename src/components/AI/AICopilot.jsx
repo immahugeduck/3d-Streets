@@ -13,7 +13,9 @@ const QUICK_PROMPTS = [
   { label: '🏨 Hotels tonight',       text: 'Find hotels near my destination' },
 ]
 
-const DESTINATION_INTENT_RE = /\b(go to|take me to|navigate to|directions? to|route to|find|search for|locate|closest|nearest)\b/i
+const TAG_DESTINATION = 'DESTINATION'
+const TAG_WAYPOINT = 'WAYPOINT'
+const DESTINATION_INTENT_RE = /\b(go to|take me to|navigate to|direction(?:s)? to|route to|find|search for|locate|closest|nearest)\b/i
 
 function extractActionTag(text, tag) {
   const match = text.match(new RegExp(`(?:^|\\n)\\s*${tag}::([^\\n]+)`, 'i'))
@@ -22,8 +24,8 @@ function extractActionTag(text, tag) {
 
 function stripActionTags(text) {
   return text
-    .replace(/(?:^|\n)\s*DESTINATION::[^\n]+/gi, '')
-    .replace(/(?:^|\n)\s*WAYPOINT::[^\n]+/gi, '')
+    .replace(new RegExp(`(?:^|\\n)\\s*${TAG_DESTINATION}::[^\\n]+`, 'gi'), '')
+    .replace(new RegExp(`(?:^|\\n)\\s*${TAG_WAYPOINT}::[^\\n]+`, 'gi'), '')
     .trim()
 }
 
@@ -96,8 +98,8 @@ export default function AICopilot() {
 
     // Parse action tags
     let cleanReply = stripActionTags(reply)
-    const destTag = extractActionTag(reply, 'DESTINATION')
-    const wpTag   = extractActionTag(reply, 'WAYPOINT')
+    const destTag = extractActionTag(reply, TAG_DESTINATION)
+    const wpTag   = extractActionTag(reply, TAG_WAYPOINT)
     let resolvedDestination = null
 
     if (destTag) {
