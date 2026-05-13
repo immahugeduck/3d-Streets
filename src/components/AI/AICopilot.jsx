@@ -15,7 +15,7 @@ const QUICK_PROMPTS = [
 
 const TAG_DESTINATION = 'DESTINATION'
 const TAG_WAYPOINT = 'WAYPOINT'
-const DESTINATION_INTENT_RE = /\b(go to|take me to|navigate to|direction to|directions to|route to|find|search for|locate|closest|nearest)\b/i
+const DESTINATION_INTENT_RE = /\b(go to|take me to|navigate to|directions? to|route to|find|search for|locate|closest|nearest)\b/i
 const ACTION_TAG_REGEX = {
   [TAG_DESTINATION]: /(?:^|\n)\s*DESTINATION::([^\n]+)/i,
   [TAG_WAYPOINT]: /(?:^|\n)\s*WAYPOINT::([^\n]+)/i,
@@ -153,10 +153,9 @@ export default function AICopilot() {
     const parsed = await parseDestination(text, userLocation)
     if (!parsed?.name) {
       console.warn('[AICopilot] parseDestination returned no structured place; falling back to raw text search', { text })
+      return handleAIDestination(text)
     }
-    const destinationQuery = parsed?.name
-      ? (parsed.address ? `${parsed.name}, ${parsed.address}` : parsed.name)
-      : text
+    const destinationQuery = parsed.address ? `${parsed.name}, ${parsed.address}` : parsed.name
     return handleAIDestination(destinationQuery)
   }
 
