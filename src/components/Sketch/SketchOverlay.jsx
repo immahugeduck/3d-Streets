@@ -6,29 +6,28 @@ import { drawRoute, fitRoute } from '../Map/MapView'
 import styles from './SketchOverlay.module.css'
 
 // ── Draw mode phases ──────────────────────────────────────────────────────
-// 'pin_start'  → user taps to place the start pin
-// 'pin_end'    → user taps to place the end pin
-// 'drawing'    → user draws the route stroke (cosmetic only)
+// 'idle'       → ready, waiting for user to start drawing
+// 'drawing'    → user is actively drawing a freehand stroke
+// 'drawn'      → stroke complete, ready to build route
 // 'processing' → fetching directions
 // 'done'       → route ready
 
 export default function SketchOverlay() {
-  const canvasRef  = useRef(null)
-  const isDrawing  = useRef(false)
-  const rawPoints  = useRef([])
+  const canvasRef   = useRef(null)
+  const isDrawing   = useRef(false)
+  const rawPoints   = useRef([])
+  const animFrameId = useRef(null)
 
-  // Two-pin anchors (screen coords + geo coords)
-  const [startPin,  setStartPin]  = useState(null)  // { x, y, lng, lat }
-  const [endPin,    setEndPin]    = useState(null)   // { x, y, lng, lat }
-  const [drawMode,  setDrawMode]  = useState('pin_start')
-  const [hasStroke, setHasStroke] = useState(false)
-  const [panMode,   setPanMode]   = useState(false)  // lets map events through
+  const [drawMode,  setDrawMode]  = useState('idle')
+  const [startPin,  setStartPin]  = useState(null)
+  const [endPin,    setEndPin]    = useState(null)
+  const [panMode,   setPanMode]   = useState(false)
 
-  const exitSketch       = useStore(s => s.exitSketch)
-  const setPhase         = useStore(s => s.setPhase)
-  const mapRef           = useStore(s => s.mapRef)
-  const setSelectedRoute = useStore(s => s.setSelectedRoute)
-  const setRouteOptions  = useStore(s => s.setRouteOptions)
+  const exitSketch         = useStore(s => s.exitSketch)
+  const setPhase           = useStore(s => s.setPhase)
+  const mapRef             = useStore(s => s.mapRef)
+  const setSelectedRoute   = useStore(s => s.setSelectedRoute)
+  const setRouteOptions    = useStore(s => s.setRouteOptions)
   const setDestinationOnly = useStore(s => s.setDestinationOnly)
 
   // ── Canvas sizing ─────────────────────────────────────────────────────
@@ -44,7 +43,7 @@ export default function SketchOverlay() {
     return () => window.removeEventListener('resize', resize)
   }, [])
 
-  // ── Convert a screen point → geo via the live Mapbox projection ───────
+  // ── Convert screen → geo via Mapbox projection ────────────────────────
   function screenToGeo(x, y) {
     const map = mapRef
     if (!map) return null
@@ -52,62 +51,17 @@ export default function SketchOverlay() {
     return { lng: ll.lng, lat: ll.lat }
   }
 
-  // ── Redraw canvas: pins + freehand stroke ─────────────────────────────
-  const redrawCanvas = useCallback(() => {
-    const canvas = canvasRef.current
-    if (!canvas) return
-    const ctx = canvas.getContext('2d')
-    ctx.clearRect(0, 0, canvas.width, canvas.height)
-
-    // Freehand stroke (cosmetic guide line)
-    const pts = rawPoints.current
-    if (pts.length >= 2) {
-      ctx.save()
-      ctx.strokeStyle = 'rgba(0,212,255,0.18)'
-      ctx.lineWidth = 18
-      ctx.lineCap = 'round'; ctx.lineJoin = 'round'
-      ctx.beginPath()
-      ctx.moveTo(pts[0].x, pts[0].y)
-      pts.slice(1).forEach(p => ctx.lineTo(p.x, p.y))
-      ctx.stroke()
-
-      ctx.strokeStyle = 'rgba(0,212,255,0.75)'
-      ctx.lineWidth = 3
-      ctx.setLineDash([8, 5])
-      ctx.beginPath()
-      ctx.moveTo(pts[0].x, pts[0].y)
-      pts.slice(1).forEach(p => ctx.lineTo(p.x, p.y))
-      ctx.stroke()
-      ctx.restore()
-    }
-
-    // Start pin
-    if (startPin) {
-      drawPin(ctx, startPin.x, startPin.y, '#00E5A0', 'S')
-    }
-
-    // End pin
-    if (endPin) {
-      drawPin(ctx, endPin.x, endPin.y, '#FF4E6A', 'E')
-    }
-  }, [startPin, endPin])
-
-  useEffect(() => { redrawCanvas() }, [startPin, endPin, redrawCanvas])
-
   // ── Pin renderer ──────────────────────────────────────────────────────
   function drawPin(ctx, x, y, color, label) {
     ctx.save()
-    // Drop shadow
     ctx.shadowColor = color
-    ctx.shadowBlur = 16
+    ctx.shadowBlur  = 16
 
-    // Pin body (teardrop)
     ctx.fillStyle = color
     ctx.beginPath()
     ctx.arc(x, y - 20, 12, 0, Math.PI * 2)
     ctx.fill()
 
-    // Pin tail
     ctx.beginPath()
     ctx.moveTo(x - 6, y - 12)
     ctx.lineTo(x + 6, y - 12)
@@ -115,69 +69,147 @@ export default function SketchOverlay() {
     ctx.closePath()
     ctx.fill()
 
-    // Label
-    ctx.shadowBlur = 0
-    ctx.fillStyle = '#000'
-    ctx.font = 'bold 11px system-ui'
-    ctx.textAlign = 'center'
-    ctx.textBaseline = 'middle'
+    ctx.shadowBlur     = 0
+    ctx.fillStyle      = '#000'
+    ctx.font           = 'bold 11px system-ui'
+    ctx.textAlign      = 'center'
+    ctx.textBaseline   = 'middle'
     ctx.fillText(label, x, y - 20)
     ctx.restore()
   }
 
-  // ── Input handlers ────────────────────────────────────────────────────
+  // ── Smooth curve through points (Catmull-Rom spline) ─────────────────
+  function drawSmoothedStroke(ctx, pts) {
+    if (pts.length < 2) return
+    ctx.beginPath()
+    ctx.moveTo(pts[0].x, pts[0].y)
+    if (pts.length === 2) {
+      ctx.lineTo(pts[1].x, pts[1].y)
+    } else {
+      for (let i = 1; i < pts.length - 1; i++) {
+        const mx = (pts[i].x + pts[i + 1].x) / 2
+        const my = (pts[i].y + pts[i + 1].y) / 2
+        ctx.quadraticCurveTo(pts[i].x, pts[i].y, mx, my)
+      }
+      const last = pts[pts.length - 1]
+      ctx.lineTo(last.x, last.y)
+    }
+  }
+
+  // ── Redraw canvas ─────────────────────────────────────────────────────
+  const redrawCanvas = useCallback(() => {
+    const canvas = canvasRef.current
+    if (!canvas) return
+    const ctx = canvas.getContext('2d')
+    ctx.clearRect(0, 0, canvas.width, canvas.height)
+
+    const pts = rawPoints.current
+    if (pts.length >= 2) {
+      // Glow layer
+      ctx.save()
+      ctx.strokeStyle = 'rgba(0,212,255,0.15)'
+      ctx.lineWidth   = 22
+      ctx.lineCap     = 'round'
+      ctx.lineJoin    = 'round'
+      drawSmoothedStroke(ctx, pts)
+      ctx.stroke()
+
+      // Core stroke
+      ctx.strokeStyle = 'rgba(0,212,255,0.85)'
+      ctx.lineWidth   = 3.5
+      ctx.setLineDash([10, 6])
+      drawSmoothedStroke(ctx, pts)
+      ctx.stroke()
+      ctx.setLineDash([])
+      ctx.restore()
+    }
+
+    // Start pin (first point of stroke)
+    if (startPin) drawPin(ctx, startPin.x, startPin.y, '#00E5A0', 'S')
+
+    // End pin (last point of stroke while drawing, locked when done)
+    if (endPin) drawPin(ctx, endPin.x, endPin.y, '#FF4E6A', 'E')
+    else if (isDrawing.current && pts.length > 0) {
+      // Live trailing end dot while drawing
+      const last = pts[pts.length - 1]
+      ctx.save()
+      ctx.fillStyle   = 'rgba(255,78,106,0.7)'
+      ctx.shadowColor = '#FF4E6A'
+      ctx.shadowBlur  = 12
+      ctx.beginPath()
+      ctx.arc(last.x, last.y, 7, 0, Math.PI * 2)
+      ctx.fill()
+      ctx.restore()
+    }
+  }, [startPin, endPin])
+
+  useEffect(() => { redrawCanvas() }, [startPin, endPin, redrawCanvas])
+
+  // ── Throttled redraw during draw via rAF ──────────────────────────────
+  function scheduleRedraw() {
+    if (animFrameId.current) return
+    animFrameId.current = requestAnimationFrame(() => {
+      animFrameId.current = null
+      redrawCanvas()
+    })
+  }
+
+  // ── Pointer helpers ───────────────────────────────────────────────────
   function getPoint(e) {
     const t = e.touches ? e.touches[0] : e
     return { x: t.clientX, y: t.clientY }
   }
 
+  // ── Draw handlers ─────────────────────────────────────────────────────
   function onStart(e) {
     e.preventDefault()
-    if (panMode) return  // canvas is pointer-events:none so this won't fire, but guard anyway
-    const pt = getPoint(e)
+    if (panMode) return
+    if (drawMode === 'processing' || drawMode === 'done') return
 
-    if (drawMode === 'pin_start') {
-      const geo = screenToGeo(pt.x, pt.y)
-      if (!geo) return
-      setStartPin({ ...pt, ...geo })
-      setDrawMode('pin_end')
-      return
-    }
+    const pt  = getPoint(e)
+    const geo = screenToGeo(pt.x, pt.y)
+    if (!geo) return
 
-    if (drawMode === 'pin_end') {
-      const geo = screenToGeo(pt.x, pt.y)
-      if (!geo) return
-      setEndPin({ ...pt, ...geo })
-      setDrawMode('drawing')
-      // Seed the stroke at the end pin so the freehand naturally connects
-      rawPoints.current = [pt]
-      return
-    }
-
-    if (drawMode === 'drawing') {
-      isDrawing.current = true
-      rawPoints.current.push(pt)
-      redrawCanvas()
-    }
+    // Start fresh stroke
+    isDrawing.current = true
+    rawPoints.current = [pt]
+    setStartPin({ ...pt, ...geo })
+    setEndPin(null)
+    setDrawMode('drawing')
+    redrawCanvas()
   }
 
   function onMove(e) {
     e.preventDefault()
-    if (drawMode !== 'drawing' || !isDrawing.current) return
+    if (!isDrawing.current || drawMode !== 'drawing') return
     const pt = getPoint(e)
     rawPoints.current.push(pt)
-    if (rawPoints.current.length % 3 === 0) redrawCanvas()
+    scheduleRedraw()
   }
 
   function onEnd(e) {
     e.preventDefault()
     if (!isDrawing.current) return
     isDrawing.current = false
-    setHasStroke(true)
+
+    const pts = rawPoints.current
+    if (pts.length < 5) {
+      // Too short — treat as a tap, reset
+      resetSketch()
+      return
+    }
+
+    // Anchor end pin at last drawn point
+    const last = pts[pts.length - 1]
+    const geo  = screenToGeo(last.x, last.y)
+    if (!geo) { resetSketch(); return }
+
+    setEndPin({ ...last, ...geo })
+    setDrawMode('drawn')
     redrawCanvas()
   }
 
-  // ── Build route from the two anchor pins ─────────────────────────────
+  // ── Build route from stroke anchors ──────────────────────────────────
   async function buildRoute() {
     if (!startPin || !endPin) return
     setDrawMode('processing')
@@ -195,7 +227,6 @@ export default function SketchOverlay() {
     }
 
     const primary = routes[0]
-
     drawRoute({ type: 'Feature', geometry: primary.geometry })
     fitRoute(primary.geometry.coordinates)
 
@@ -206,10 +237,10 @@ export default function SketchOverlay() {
     }
 
     setDestinationOnly({
-      id: 'sketch-destination',
+      id:   'sketch-destination',
       name: 'Sketch destination',
-      lng: endPin.lng,
-      lat: endPin.lat,
+      lng:  endPin.lng,
+      lat:  endPin.lat,
     })
     setRouteOptions([syntheticRoute])
     setSelectedRoute(syntheticRoute)
@@ -221,46 +252,30 @@ export default function SketchOverlay() {
     }, 900)
   }
 
-  // ── Reset helpers ─────────────────────────────────────────────────────
-  function resetPins() {
+  // ── Reset ─────────────────────────────────────────────────────────────
+  function resetSketch() {
+    isDrawing.current = false
+    rawPoints.current = []
     setStartPin(null)
     setEndPin(null)
-    setDrawMode('pin_start')
-    setHasStroke(false)
-    rawPoints.current = []
+    setDrawMode('idle')
     const canvas = canvasRef.current
     if (canvas) canvas.getContext('2d').clearRect(0, 0, canvas.width, canvas.height)
   }
 
-  function undoStep() {
-    if (drawMode === 'drawing' || drawMode === 'pin_end') {
-      // Go back one step: if we have an end pin, remove it; else remove start
-      if (endPin) {
-        setEndPin(null)
-        setDrawMode('pin_end')
-        rawPoints.current = []
-        setHasStroke(false)
-      } else if (startPin) {
-        setStartPin(null)
-        setDrawMode('pin_start')
-      }
-      redrawCanvas()
-    }
-  }
-
   // ── Status hint text ──────────────────────────────────────────────────
   const hintText = panMode
-    ? 'Pan mode — move the map freely, tap Pan again to resume'
+    ? 'Pan mode — move map freely, tap Pan to resume drawing'
     : ({
-        pin_start:  'Tap to place your START point',
-        pin_end:    'Tap to place your END point',
-        drawing:    'Draw your route — or tap "Build Route" to go',
+        idle:       'Draw your route — press & drag to start',
+        drawing:    'Keep drawing… lift to finish',
+        drawn:      'Looks good! Tap "Build Route" or redraw',
         processing: 'Building route…',
-        done:       'Route ready',
-        error:      'Could not find a route — try different points',
+        done:       'Route ready!',
+        error:      'Could not find a route — try again',
       }[drawMode] ?? '')
 
-  const canBuild  = startPin && endPin && drawMode === 'drawing'
+  const canBuild  = drawMode === 'drawn' && startPin && endPin
   const isWorking = drawMode === 'processing'
 
   return (
@@ -275,55 +290,39 @@ export default function SketchOverlay() {
         onMouseMove={panMode ? undefined : onMove}
         onMouseUp={panMode ? undefined : onEnd}
         style={{
-          cursor: panMode ? 'grab' : drawMode === 'drawing' ? 'crosshair' : 'pointer',
+          cursor:        panMode ? 'grab' : drawMode === 'drawing' ? 'crosshair' : 'pointer',
           pointerEvents: panMode ? 'none' : 'auto',
         }}
       />
 
-      {/* Step indicator */}
+      {/* Hint pill */}
       <motion.div
         className={styles.hint}
-        initial={{ opacity: 0, y: -8 }}
+        key={hintText}
+        initial={{ opacity: 0, y: -6 }}
         animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.2 }}
       >
         {isWorking && <div className={styles.processingDot} />}
         {drawMode === 'done'  && <span className={styles.doneCheck}>✓</span>}
         {drawMode === 'error' && <span className={styles.errorX}>✕</span>}
+        {drawMode === 'drawn' && !isWorking && <span className={styles.readyDot} />}
         <span>{hintText}</span>
       </motion.div>
 
-      {/* Pin step breadcrumbs */}
+      {/* Live status strip while drawing */}
       <AnimatePresence>
-        <motion.div
-          className={styles.stepRow}
-          initial={{ opacity: 0, y: 12 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.1 }}
-        >
-          <StepDot
-            label="1"
-            text="Start"
-            done={!!startPin}
-            active={drawMode === 'pin_start'}
-            color="#00E5A0"
-          />
-          <div className={styles.stepLine} />
-          <StepDot
-            label="2"
-            text="End"
-            done={!!endPin}
-            active={drawMode === 'pin_end'}
-            color="#FF4E6A"
-          />
-          <div className={styles.stepLine} />
-          <StepDot
-            label="3"
-            text="Draw"
-            done={hasStroke}
-            active={drawMode === 'drawing'}
-            color="#00D4FF"
-          />
-        </motion.div>
+        {drawMode === 'drawing' && (
+          <motion.div
+            className={styles.drawingBadge}
+            initial={{ opacity: 0, scale: 0.85 }}
+            animate={{ opacity: 1, scale: 1 }}
+            exit={{ opacity: 0, scale: 0.85 }}
+          >
+            <span className={styles.liveDot} />
+            Drawing
+          </motion.div>
+        )}
       </AnimatePresence>
 
       {/* Toolbar */}
@@ -334,19 +333,10 @@ export default function SketchOverlay() {
         transition={{ type: 'spring', stiffness: 300, damping: 30 }}
       >
         <button
-          className={styles.toolBtn}
-          onClick={undoStep}
-          disabled={!startPin || isWorking}
-        >
-          <UndoIcon />
-          <span>Undo</span>
-        </button>
-
-        <button
           className={`${styles.toolBtn} ${panMode ? styles.toolBtnActive : ''}`}
           onClick={() => setPanMode(p => !p)}
           disabled={isWorking}
-          title="Toggle pan mode — lets you move the map without placing pins"
+          title="Toggle pan mode"
         >
           <PanIcon />
           <span>Pan</span>
@@ -354,8 +344,8 @@ export default function SketchOverlay() {
 
         <button
           className={styles.toolBtn}
-          onClick={resetPins}
-          disabled={!startPin || isWorking}
+          onClick={resetSketch}
+          disabled={drawMode === 'idle' || isWorking}
         >
           <TrashIcon />
           <span>Clear</span>
@@ -367,7 +357,7 @@ export default function SketchOverlay() {
           disabled={!canBuild || isWorking}
         >
           {isWorking ? (
-            <><SpinnerIcon /> Building Route…</>
+            <><SpinnerIcon /> Building…</>
           ) : (
             <><SparkleIcon /> Build Route</>
           )}
@@ -382,26 +372,9 @@ export default function SketchOverlay() {
   )
 }
 
-// ── Step dot component ────────────────────────────────────────────────────
-function StepDot({ label, text, done, active, color }) {
-  return (
-    <div className={styles.stepDot}>
-      <div
-        className={`${styles.stepCircle} ${done ? styles.stepDone : ''} ${active ? styles.stepActive : ''}`}
-        style={done || active ? { borderColor: color, background: done ? color : 'transparent' } : {}}
-      >
-        {done ? <CheckIcon size={10} /> : <span>{label}</span>}
-      </div>
-      <span className={`${styles.stepLabel} ${active ? styles.stepLabelActive : ''}`}>{text}</span>
-    </div>
-  )
-}
-
 // ── Icon components ───────────────────────────────────────────────────────
-const UndoIcon    = () => <svg width="18" height="18" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" viewBox="0 0 24 24"><polyline points="9 14 4 9 9 4"/><path d="M20 20v-7a4 4 0 0 0-4-4H4"/></svg>
 const PanIcon     = () => <svg width="18" height="18" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" viewBox="0 0 24 24"><path d="M18 11V6a2 2 0 0 0-2-2 2 2 0 0 0-2 2"/><path d="M14 10V4a2 2 0 0 0-2-2 2 2 0 0 0-2 2v2"/><path d="M10 10.5V6a2 2 0 0 0-2-2 2 2 0 0 0-2 2v8"/><path d="M18 11a2 2 0 1 1 4 0v3a8 8 0 0 1-8 8h-2a8 8 0 0 1-7.4-5L3 16"/></svg>
 const TrashIcon   = () => <svg width="18" height="18" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" viewBox="0 0 24 24"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14H6L5 6"/><path d="M10 11v6M14 11v6"/><path d="M9 6V4h6v2"/></svg>
 const XIcon       = () => <svg width="18" height="18" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" viewBox="0 0 24 24"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
 const SparkleIcon = () => <svg width="16" height="16" fill="currentColor" viewBox="0 0 24 24"><path d="M12 2l2.4 7.4H22l-6.2 4.5 2.4 7.4L12 17l-6.2 4.3 2.4-7.4L2 9.4h7.6z"/></svg>
 const SpinnerIcon = () => <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" className={styles.spin}><path d="M21 12a9 9 0 1 1-6.219-8.56"/></svg>
-const CheckIcon   = ({ size = 14 }) => <svg width={size} height={size} fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg>
