@@ -24,7 +24,7 @@ function getManeuverIcon(type, modifier) {
   return MANEUVER_ICONS[key] ?? MANEUVER_ICONS[type] ?? MANEUVER_ICONS.default
 }
 
-export default function CarHoodOverlay() {
+export default function CarHoodOverlay({ version = 'v2' }) {
   const speedMPH       = useStore(s => s.speedMPH)
   const drivingView    = useStore(s => s.drivingView)
   const toggleDrivingView = useStore(s => s.toggleDrivingView)
@@ -35,11 +35,13 @@ export default function CarHoodOverlay() {
   const step = routeSteps[currentStepIndex]
   const nextStep = routeSteps[currentStepIndex + 1]
 
+  const isV3 = version === 'v3'
+
   if (!drivingView) return null
 
   return (
     <motion.div
-      className={styles.overlay}
+      className={`${styles.overlay} ${isV3 ? styles.overlayV3 : ""}`}
       initial={{ y: 120, opacity: 0 }}
       animate={{ y: 0, opacity: 1 }}
       exit={{ y: 120, opacity: 0 }}
@@ -49,6 +51,7 @@ export default function CarHoodOverlay() {
       <div className={styles.windshieldPillarLeft} />
       <div className={styles.windshieldPillarRight} />
       <div className={styles.windshieldGlare} />
+      {isV3 && <div className={styles.windshieldHorizonLine} />}
 
       <svg
         className={styles.hood}
@@ -212,13 +215,13 @@ export default function CarHoodOverlay() {
             <div className={styles.wheelCenter} />
           </div>
 
-          <div className={styles.speedIndicator}>
+          <div className={`${styles.speedIndicator} ${isV3 ? styles.speedIndicatorV3 : ""}`}>
             <span className={styles.speedValue}>{Math.round(speedMPH)}</span>
             <span className={styles.speedUnit}>MPH</span>
           </div>
         </div>
 
-        <div className={styles.navDisplay}>
+        <div className={`${styles.navDisplay} ${isV3 ? styles.navDisplayV3 : ""}`}>
           <div className={styles.navDisplayTop}>
             <span className={styles.navManeuver}>{getManeuverIcon(step?.maneuver, step?.modifier)}</span>
             <span className={styles.navDistance}>{step?.distanceLabel ?? '—'}</span>
