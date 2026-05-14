@@ -5,18 +5,56 @@ import styles from './MapView.module.css'
 
 mapboxgl.accessToken = import.meta.env.VITE_MAPBOX_TOKEN || ''
 
-// ── Route color constants — change these to retheme the route line ─────────
-const ROUTE_COLOR        = '#FF9500'  // neon orange primary line
-const ROUTE_CASING_COLOR = '#7A3800'  // dark burnt-orange border (creates depth)
-const ROUTE_GLOW_COLOR   = '#FF6600'  // slightly redder for the bloom effect
-const ROUTE_ALT_COLOR    = '#5A4030'  // muted brown for alternate routes
+// ── Route color constants — Forza Horizon 5-inspired blue/cyan scheme ────────
+const ROUTE_COLOR        = '#0099FF'  // electric blue primary line
+const ROUTE_CASING_COLOR = '#003B6E'  // deep navy border (depth)
+const ROUTE_GLOW_COLOR   = '#00AAFF'  // brighter cyan for bloom
+const ROUTE_ALT_COLOR    = '#2A3A50'  // muted slate for alternate routes
 
 // ── Module-level caches ───────────────────────────────────────────────────
 let _drawnRoutes      = []
 let _routeCoordinates = []
 
-export function setRouteGeometry(coords) {
-  _routeCoordinates = Array.isArray(coords) ? coords : []
+// ── Guide dash animation ──────────────────────────────────────────────────
+let _guideAnimId = null
+let _guideStep   = 0
+
+// Cycling dash-array sequences — creates the Forza "flowing road guide" effect
+const GUIDE_DASH_SEQ = [
+  [0, 4, 3], [0.5, 4, 2.5], [1, 4, 2], [1.5, 4, 1.5],
+  [2, 4, 1], [2.5, 4, 0.5], [3, 4, 0],
+  [0, 0.5, 3, 3.5], [0, 1, 3, 3],   [0, 1.5, 3, 2.5],
+  [0, 2, 3, 2],     [0, 2.5, 3, 1.5], [0, 3, 3, 1], [0, 3.5, 3, 0.5],
+]
+
+export function startGuideAnimation() {
+  if (_guideAnimId) return
+  const map = window._3dstreetsMap
+  if (!map) return
+
+  let lastMs = 0
+  function frame(ms) {
+    if (ms - lastMs > 55) {
+      if (map.isStyleLoaded() && map.getLayer('route-guide')) {
+        map.setPaintProperty(
+          'route-guide',
+          'line-dasharray',
+          GUIDE_DASH_SEQ[_guideStep % GUIDE_DASH_SEQ.length]
+        )
+        _guideStep++
+      }
+      lastMs = ms
+    }
+    _guideAnimId = requestAnimationFrame(frame)
+  }
+  _guideAnimId = requestAnimationFrame(frame)
+}
+
+export function stopGuideAnimation() {
+  if (_guideAnimId) {
+    cancelAnimationFrame(_guideAnimId)
+    _guideAnimId = null
+  }
 }
 
 // ── Component ─────────────────────────────────────────────────────────────
@@ -354,14 +392,15 @@ export function drawRoute(geojson, isAlternate = false) {
   _applyRouteToMap(map, geojson, isAlternate)
 }
 
-// Premium route rendering — 3 layers: glow bloom → dark casing → bright line
+// Premium route rendering — 4 layers: glow bloom → dark casing → bright line → animated guide
 function _applyRouteToMap(map, geojson, isAlternate = false) {
   const sourceId = isAlternate ? 'route-alt'      : 'route-main'
   const glowId   = isAlternate ? null              : 'route-glow'
   const casingId = isAlternate ? null              : 'route-casing'
   const layerId  = isAlternate ? 'route-layer-alt' : 'route-layer'
+  const guideId  = isAlternate ? null              : 'route-guide'
 
-  ;[layerId, casingId, glowId].filter(Boolean).forEach(id => {
+  ;[layerId, casingId, glowId, guideId].filter(Boolean).forEach(id => {
     if (map.getLayer(id)) map.removeLayer(id)
   })
   if (map.getSource(sourceId)) map.removeSource(sourceId)
@@ -369,25 +408,25 @@ function _applyRouteToMap(map, geojson, isAlternate = false) {
   map.addSource(sourceId, { type: 'geojson', data: geojson })
 
   if (!isAlternate) {
-    // Layer 1 — wide soft bloom
+    // Layer 1 — wide soft cyan bloom (Forza road-band glow)
     map.addLayer({
       id: glowId, type: 'line', source: sourceId,
       slot: 'top',
       paint: {
         'line-color':   ROUTE_GLOW_COLOR,
-        'line-width':   ['interpolate', ['linear'], ['zoom'], 10, 12, 16, 22],
-        'line-blur':    10,
-        'line-opacity': 0.3,
+        'line-width':   ['interpolate', ['linear'], ['zoom'], 10, 16, 16, 28],
+        'line-blur':    12,
+        'line-opacity': 0.28,
       },
       layout: { 'line-cap': 'round', 'line-join': 'round' },
     })
-    // Layer 2 — dark casing border
+    // Layer 2 — dark navy casing border
     map.addLayer({
       id: casingId, type: 'line', source: sourceId,
       slot: 'top',
       paint: {
         'line-color':   ROUTE_CASING_COLOR,
-        'line-width':   ['interpolate', ['linear'], ['zoom'], 10, 10, 16, 14],
+        'line-width':   ['interpolate', ['linear'], ['zoom'], 10, 11, 16, 16],
         'line-opacity': 0.9,
       },
       layout: { 'line-cap': 'round', 'line-join': 'round' },
@@ -402,11 +441,26 @@ function _applyRouteToMap(map, geojson, isAlternate = false) {
       'line-color':   isAlternate ? ROUTE_ALT_COLOR : ROUTE_COLOR,
       'line-width':   isAlternate
         ? ['interpolate', ['linear'], ['zoom'], 10, 3, 16, 5]
-        : ['interpolate', ['linear'], ['zoom'], 10, 6, 16, 9],
-      'line-opacity': isAlternate ? 0.55 : 1,
+        : ['interpolate', ['linear'], ['zoom'], 10, 7, 16, 11],
+      'line-opacity': isAlternate ? 0.5 : 1,
     },
     layout: { 'line-cap': 'round', 'line-join': 'round' },
   })
+
+  if (!isAlternate) {
+    // Layer 4 — animated white guide dashes (Forza driving line center guide)
+    map.addLayer({
+      id: guideId, type: 'line', source: sourceId,
+      slot: 'top',
+      paint: {
+        'line-color':   'rgba(255, 255, 255, 0.85)',
+        'line-width':   ['interpolate', ['linear'], ['zoom'], 12, 1.5, 16, 2.5],
+        'line-dasharray': [0, 4, 3],
+        'line-opacity': 0.7,
+      },
+      layout: { 'line-cap': 'round', 'line-join': 'round' },
+    })
+  }
 }
 
 export function clearRoute() {
@@ -414,10 +468,11 @@ export function clearRoute() {
   _drawnRoutes      = []
   _routeCoordinates = []
   if (!map) return
+  stopGuideAnimation()
   ;[
     'route-layer', 'route-layer-alt',
     'route-glow',  'route-casing',
-    'route-main',  'route-alt',
+    'route-guide', 'route-main',  'route-alt',
     'sketch-layer', 'sketch-source',
   ].forEach(id => {
     if (map.getLayer(id))   map.removeLayer(id)
