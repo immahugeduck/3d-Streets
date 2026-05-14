@@ -129,6 +129,8 @@ const useStore = create((set, get) => ({
   toggleDrivingView: ()            => set(s => ({ drivingView: !s.drivingView })),
   cockpitMode: 'sport',
   setCockpitMode: (cockpitMode) => set({ cockpitMode }),
+  cockpitOverlayVersion: 'v2',
+  setCockpitOverlayVersion: (cockpitOverlayVersion) => set({ cockpitOverlayVersion }),
 
   // ── User location ─────────────────────────────────────────────────────
   userLocation: null,
