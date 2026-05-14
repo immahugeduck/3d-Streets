@@ -27,6 +27,7 @@ function getManeuverIcon(type, modifier) {
 export default function CarHoodOverlay() {
   const speedMPH       = useStore(s => s.speedMPH)
   const drivingView    = useStore(s => s.drivingView)
+  const cockpitMode    = useStore(s => s.cockpitMode)
   const toggleDrivingView = useStore(s => s.toggleDrivingView)
   const routeSteps     = useStore(s => s.routeSteps)
   const currentStepIndex = useStore(s => s.currentStepIndex)
@@ -39,7 +40,7 @@ export default function CarHoodOverlay() {
 
   return (
     <motion.div
-      className={styles.overlay}
+      className={`${styles.overlay} ${styles[`mode-${cockpitMode}`] || ''}`}
       initial={{ y: 120, opacity: 0 }}
       animate={{ y: 0, opacity: 1 }}
       exit={{ y: 120, opacity: 0 }}
@@ -49,6 +50,7 @@ export default function CarHoodOverlay() {
       <div className={styles.windshieldPillarLeft} />
       <div className={styles.windshieldPillarRight} />
       <div className={styles.windshieldGlare} />
+      <div className={styles.rearViewStrip} />
 
       <svg
         className={styles.hood}
