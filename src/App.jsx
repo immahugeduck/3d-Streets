@@ -140,9 +140,17 @@ function SettingsOverlay({ onClose }) {
             <ToggleRow label="Speed HUD"     value={showSpeedHUD} onChange={setShowSpeedHUD} />
             <div className={styles.toggleRow}>
               <span className={styles.toggleLabel}>Cockpit Visual</span>
-              <div style={{ display: 'flex', gap: 8 }}>
-                <button className={`${styles.styleCard} ${cockpitOverlayVersion === 'v2' ? styles.styleCardActive : ''}`} onClick={() => setCockpitOverlayVersion('v2')}>V2</button>
-                <button className={`${styles.styleCard} ${cockpitOverlayVersion === 'v3' ? styles.styleCardActive : ''}`} onClick={() => setCockpitOverlayVersion('v3')}>V3</button>
+              <div role="group" aria-label="Cockpit visual version" style={{ display: 'flex', gap: 8 }}>
+                <button
+                  className={`${styles.styleCard} ${cockpitOverlayVersion === 'v2' ? styles.styleCardActive : ''}`}
+                  onClick={() => setCockpitOverlayVersion('v2')}
+                  aria-pressed={cockpitOverlayVersion === 'v2'}
+                >V2</button>
+                <button
+                  className={`${styles.styleCard} ${cockpitOverlayVersion === 'v3' ? styles.styleCardActive : ''}`}
+                  onClick={() => setCockpitOverlayVersion('v3')}
+                  aria-pressed={cockpitOverlayVersion === 'v3'}
+                >V3</button>
               </div>
             </div>
           </div>
