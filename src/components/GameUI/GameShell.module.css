@@ -1,0 +1,331 @@
+.shell {
+  position: absolute;
+  inset: 0;
+  z-index: 38;
+  pointer-events: none;
+  color: #f8fbff;
+  font-family: var(--font-hud, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif);
+}
+
+.shell::before,
+.shell::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+}
+
+.shell::before {
+  background:
+    radial-gradient(circle at 50% 68%, rgba(0, 212, 255, 0.12), transparent 24%),
+    radial-gradient(circle at 50% 100%, rgba(0, 0, 0, 0.1), rgba(0, 0, 0, 0.62) 82%),
+    linear-gradient(to bottom, rgba(0, 0, 0, 0.3), transparent 28%, transparent 55%, rgba(0, 0, 0, 0.38));
+}
+
+.shell::after {
+  border: 1px solid rgba(0, 212, 255, 0.16);
+  box-shadow: inset 0 0 70px rgba(0, 0, 0, 0.58), inset 0 0 45px rgba(0, 212, 255, 0.07);
+}
+
+.scanlines {
+  position: absolute;
+  inset: 0;
+  opacity: 0.14;
+  background: repeating-linear-gradient(to bottom, rgba(255, 255, 255, 0.16) 0 1px, transparent 1px 5px);
+  mix-blend-mode: overlay;
+}
+
+.topBar {
+  position: absolute;
+  top: calc(14px + env(safe-area-inset-top));
+  left: 14px;
+  right: 14px;
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 12px;
+}
+
+.brandBlock,
+.vehicleTabs,
+.metricCard,
+.objectiveCard,
+.turnCard,
+.etaCard,
+.speedRing {
+  background: linear-gradient(145deg, rgba(5, 9, 18, 0.88), rgba(9, 18, 34, 0.72));
+  border: 1px solid rgba(0, 212, 255, 0.24);
+  box-shadow: 0 0 22px rgba(0, 212, 255, 0.08), inset 0 1px 0 rgba(255, 255, 255, 0.07);
+  backdrop-filter: blur(14px);
+}
+
+.brandBlock {
+  min-width: 132px;
+  border-radius: 16px;
+  padding: 10px 13px;
+}
+
+.brandKicker,
+.metricLabel {
+  display: block;
+  font-size: 9px;
+  line-height: 1;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: rgba(146, 232, 255, 0.78);
+}
+
+.brandBlock strong {
+  display: block;
+  margin-top: 5px;
+  font-size: 18px;
+  letter-spacing: -0.03em;
+}
+
+.vehicleTabs {
+  display: flex;
+  gap: 6px;
+  padding: 6px;
+  border-radius: 999px;
+  pointer-events: auto;
+}
+
+.vehicleTab {
+  border: 0;
+  border-radius: 999px;
+  padding: 8px 10px;
+  color: rgba(248, 251, 255, 0.86);
+  background: rgba(255, 255, 255, 0.06);
+  font-size: 12px;
+  font-weight: 800;
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  cursor: pointer;
+}
+
+.vehicleTab:first-child {
+  background: linear-gradient(135deg, rgba(0, 212, 255, 0.34), rgba(72, 99, 255, 0.26));
+  color: #ffffff;
+}
+
+.centerReticle {
+  position: absolute;
+  left: 50%;
+  top: 48%;
+  width: 82px;
+  height: 82px;
+  transform: translate(-50%, -50%);
+  border-radius: 50%;
+  border: 1px solid rgba(0, 212, 255, 0.16);
+  box-shadow: 0 0 28px rgba(0, 212, 255, 0.08);
+}
+
+.centerReticle::before,
+.centerReticle::after,
+.centerReticle span::before,
+.centerReticle span::after {
+  content: '';
+  position: absolute;
+  background: rgba(137, 232, 255, 0.48);
+}
+
+.centerReticle::before {
+  left: 50%;
+  top: -12px;
+  width: 1px;
+  height: 24px;
+}
+
+.centerReticle::after {
+  left: 50%;
+  bottom: -12px;
+  width: 1px;
+  height: 24px;
+}
+
+.centerReticle span::before {
+  top: 50%;
+  left: -12px;
+  width: 24px;
+  height: 1px;
+}
+
+.centerReticle span::after {
+  top: 50%;
+  right: -12px;
+  width: 24px;
+  height: 1px;
+}
+
+.leftStack,
+.rightStack {
+  position: absolute;
+  top: calc(104px + env(safe-area-inset-top));
+  display: grid;
+  gap: 10px;
+}
+
+.leftStack { left: 14px; }
+.rightStack { right: 14px; }
+
+.metricCard {
+  width: 104px;
+  border-radius: 14px;
+  padding: 11px 12px;
+}
+
+.metricCard strong,
+.objectiveCard strong,
+.etaCard strong,
+.turnCard strong {
+  display: block;
+  margin-top: 6px;
+  font-size: 20px;
+  letter-spacing: -0.04em;
+}
+
+.objectiveCard {
+  width: min(210px, 38vw);
+  border-radius: 16px;
+  padding: 12px 14px;
+}
+
+.objectiveCard small {
+  display: block;
+  margin-top: 6px;
+  color: rgba(218, 237, 255, 0.66);
+  font-size: 11px;
+}
+
+.bottomDock {
+  position: absolute;
+  left: 14px;
+  right: 14px;
+  bottom: calc(14px + env(safe-area-inset-bottom));
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  gap: 10px;
+  align-items: end;
+}
+
+.speedRing {
+  width: 96px;
+  height: 96px;
+  border-radius: 50%;
+  display: grid;
+  place-items: center;
+  position: relative;
+}
+
+.speedRing::before {
+  content: '';
+  position: absolute;
+  inset: 8px;
+  border-radius: 50%;
+  border: 2px solid rgba(0, 212, 255, 0.26);
+  border-top-color: rgba(255, 255, 255, 0.88);
+  border-right-color: rgba(0, 212, 255, 0.72);
+}
+
+.speedRing span {
+  font-size: 31px;
+  font-weight: 900;
+  letter-spacing: -0.08em;
+  line-height: 1;
+}
+
+.speedRing small {
+  position: absolute;
+  bottom: 25px;
+  font-size: 9px;
+  letter-spacing: 0.13em;
+  color: rgba(146, 232, 255, 0.78);
+}
+
+.turnCard {
+  min-width: 0;
+  border-radius: 18px;
+  padding: 13px 15px;
+}
+
+.turnCard p {
+  margin: 5px 0 0;
+  color: rgba(226, 240, 255, 0.72);
+  font-size: 12px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.etaCard {
+  min-width: 82px;
+  border-radius: 16px;
+  padding: 12px 14px;
+  text-align: right;
+}
+
+.navActive .centerReticle {
+  border-color: rgba(0, 212, 255, 0.34);
+  box-shadow: 0 0 34px rgba(0, 212, 255, 0.18);
+}
+
+@media (max-width: 720px) {
+  .vehicleTabs {
+    max-width: 52vw;
+    overflow-x: auto;
+  }
+
+  .vehicleTab {
+    font-size: 0;
+    padding: 8px 9px;
+  }
+
+  .vehicleTab span {
+    font-size: 15px;
+  }
+
+  .leftStack,
+  .rightStack {
+    top: calc(92px + env(safe-area-inset-top));
+  }
+
+  .rightStack {
+    display: none;
+  }
+
+  .metricCard {
+    width: 86px;
+    padding: 9px 10px;
+  }
+
+  .metricCard strong {
+    font-size: 16px;
+  }
+
+  .bottomDock {
+    grid-template-columns: auto minmax(0, 1fr);
+  }
+
+  .etaCard {
+    display: none;
+  }
+
+  .speedRing {
+    width: 78px;
+    height: 78px;
+  }
+
+  .speedRing span {
+    font-size: 25px;
+  }
+
+  .speedRing small {
+    bottom: 20px;
+    font-size: 8px;
+  }
+
+  .turnCard {
+    padding: 11px 12px;
+  }
+}
