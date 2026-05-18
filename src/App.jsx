@@ -8,6 +8,7 @@ import SearchBar          from './components/Search/SearchBar'
 import MapControls        from './components/Controls/MapControls'
 import NavigationHUD      from './components/Navigation/NavigationHUD'
 import CarHoodOverlay     from './components/Navigation/CarHoodOverlay'
+import GameShell          from './components/GameUI/GameShell'
 import RoutePreviewPanel  from './components/Navigation/RoutePreviewPanel'
 import RouteStopsPanel    from './components/Navigation/RouteStopsPanel'
 import NavigationSidebar  from './components/Navigation/NavigationSidebar'
@@ -31,6 +32,10 @@ export default function App() {
   return (
     <div className={styles.app}>
       <MapView />
+
+      <AnimatePresence>
+        {phase !== PHASE.SKETCHING && <GameShell key="game-shell" />}
+      </AnimatePresence>
 
       <AnimatePresence>
         {phase === PHASE.SKETCHING && <SketchOverlay key="sketch" />}
@@ -138,7 +143,7 @@ function SettingsOverlay({ onClose }) {
           </div>
 
           <div className={styles.appVersion}>
-            3D Streets v1.0 · Built with Mapbox + Claude
+            3D Streets v1.0 · Game UI branch
           </div>
         </div>
       </motion.div>
