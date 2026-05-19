@@ -145,11 +145,13 @@ export default function GameShell() {
             <div className={styles.wheelHub} />
           </motion.div>
 
-          <div className={styles.centerScreen}>
-            <span className={styles.metricLabel}>Next</span>
-            <strong>{navActive ? (activeStep?.distanceLabel ?? '—') : 'Ready'}</strong>
-            <p>{navActive ? (activeStep?.instruction ?? 'Continue on current road') : 'Start navigation to activate route guidance.'}</p>
-          </div>
+          {navActive && (
+            <div className={styles.centerScreen}>
+              <span className={styles.metricLabel}>Next</span>
+              <strong>{activeStep?.distanceLabel ?? '—'}</strong>
+              <p>{activeStep?.instruction ?? 'Continue on current road'}</p>
+            </div>
+          )}
         </div>
       </motion.div>
 
@@ -158,15 +160,19 @@ export default function GameShell() {
           <span>{Math.round(speedMPH || 0)}</span>
           <small>MPH</small>
         </div>
-        <div className={styles.turnCard}>
-          <span className={styles.metricLabel}>{navActive ? 'Next Move' : 'Drive Mode'}</span>
-          <strong>{navActive ? (activeStep?.distanceLabel ?? '—') : profile.label}</strong>
-          <p>{navActive ? (activeStep?.instruction ?? 'Continue on current road') : profile.tagline}</p>
-        </div>
-        <div className={styles.etaCard}>
-          <span className={styles.metricLabel}>ETA</span>
-          <strong>{navActive ? (eta || '--:--') : '--:--'}</strong>
-        </div>
+        {navActive && (
+          <>
+            <div className={styles.turnCard}>
+              <span className={styles.metricLabel}>Next Move</span>
+              <strong>{activeStep?.distanceLabel ?? '—'}</strong>
+              <p>{activeStep?.instruction ?? 'Continue on current road'}</p>
+            </div>
+            <div className={styles.etaCard}>
+              <span className={styles.metricLabel}>ETA</span>
+              <strong>{eta || '--:--'}</strong>
+            </div>
+          </>
+        )}
       </div>
     </motion.div>
   )
