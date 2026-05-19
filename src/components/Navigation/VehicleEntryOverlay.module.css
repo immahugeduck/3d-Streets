@@ -1,0 +1,52 @@
+.overlay {
+  position: absolute;
+  inset: 0;
+  z-index: 72;
+  display: grid;
+  place-items: center;
+  pointer-events: none;
+  background:
+    radial-gradient(circle at 50% 64%, rgba(255, 255, 255, 0.10), transparent 20%),
+    linear-gradient(to bottom, rgba(0, 0, 0, 0.62), rgba(0, 0, 0, 0.18) 45%, rgba(0, 0, 0, 0.72));
+  backdrop-filter: blur(2px);
+}
+
+.card {
+  position: relative;
+  min-width: min(360px, calc(100vw - 48px));
+  padding: 22px 24px;
+  border-radius: 26px;
+  text-align: center;
+  color: #f8fbff;
+  background: linear-gradient(145deg, rgba(9, 12, 18, 0.84), rgba(20, 25, 34, 0.64));
+  border: 1px solid rgba(255, 255, 255, 0.16);
+  box-shadow: 0 24px 80px rgba(0, 0, 0, 0.55), inset 0 1px 0 rgba(255, 255, 255, 0.12);
+}
+
+.card span,
+.card small {
+  display: block;
+  font-size: 11px;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: rgba(226, 235, 245, 0.66);
+}
+
+.card strong {
+  display: block;
+  margin: 8px 0 7px;
+  font-size: clamp(28px, 7vw, 48px);
+  font-weight: 800;
+  letter-spacing: -0.06em;
+}
+
+.sweep {
+  position: absolute;
+  left: 8vw;
+  right: 8vw;
+  bottom: 30%;
+  height: 1px;
+  transform-origin: center;
+  background: linear-gradient(to right, transparent, rgba(255, 255, 255, 0.88), transparent);
+  box-shadow: 0 0 20px rgba(255, 255, 255, 0.34);
+}
