@@ -9,6 +9,7 @@ import MapControls        from './components/Controls/MapControls'
 import NavigationHUD      from './components/Navigation/NavigationHUD'
 import CarHoodOverlay     from './components/Navigation/CarHoodOverlay'
 import GameShell          from './components/GameUI/GameShell'
+import VehicleEntryOverlay from './components/Navigation/VehicleEntryOverlay'
 import RoutePreviewPanel  from './components/Navigation/RoutePreviewPanel'
 import RouteStopsPanel    from './components/Navigation/RouteStopsPanel'
 import NavigationSidebar  from './components/Navigation/NavigationSidebar'
@@ -17,6 +18,19 @@ import SketchOverlay      from './components/Sketch/SketchOverlay'
 import POIPanel           from './components/POI/POIPanel'
 import './styles/design-system.css'
 import styles from './App.module.css'
+
+const COCKPIT_MODES = [
+  { key: 'sport', label: 'Sport', icon: 'GT' },
+  { key: 'truck', label: 'Truck', icon: 'TR' },
+  { key: 'suv', label: 'SUV', icon: 'SV' },
+  { key: 'van', label: 'Van', icon: 'VN' },
+  { key: 'minimal', label: 'Minimal', icon: 'MI' },
+]
+
+const VIEW_MODES = [
+  { key: 'cockpit', label: 'Cockpit', icon: '◒' },
+  { key: 'hood', label: 'Hood', icon: '━' },
+]
 
 export default function App() {
   useLocation()
@@ -36,6 +50,8 @@ export default function App() {
       <AnimatePresence>
         {phase !== PHASE.SKETCHING && <GameShell key="game-shell" />}
       </AnimatePresence>
+
+      <VehicleEntryOverlay />
 
       <AnimatePresence>
         {phase === PHASE.SKETCHING && <SketchOverlay key="sketch" />}
@@ -96,10 +112,12 @@ function SettingsOverlay({ onClose }) {
   const setIs3D         = useStore(s => s.setIs3D)
   const showTraffic     = useStore(s => s.showTraffic)
   const setShowTraffic  = useStore(s => s.setShowTraffic)
-  const showSpeedHUD    = useStore(s => s.showSpeedHUD)
-  const setShowSpeedHUD = useStore(s => s.setShowSpeedHUD)
   const drivingView     = useStore(s => s.drivingView)
   const setDrivingView  = useStore(s => s.setDrivingView)
+  const cockpitView     = useStore(s => s.cockpitView)
+  const setCockpitView  = useStore(s => s.setCockpitView)
+  const cockpitMode     = useStore(s => s.cockpitMode)
+  const setCockpitMode  = useStore(s => s.setCockpitMode)
 
   return (
     <>
@@ -122,13 +140,33 @@ function SettingsOverlay({ onClose }) {
             <div className={styles.sectionLabel}>MAP STYLE</div>
             <div className={styles.styleGrid}>
               {Object.entries(MAP_STYLES).map(([key, s]) => (
-                <button
-                  key={key}
-                  className={`${styles.styleCard} ${mapStyle === key ? styles.styleCardActive : ''}`}
-                  onClick={() => setMapStyle(key)}
-                >
+                <button key={key} className={`${styles.styleCard} ${mapStyle === key ? styles.styleCardActive : ''}`} onClick={() => setMapStyle(key)}>
                   <span className={styles.styleCardIcon}>{s.icon}</span>
                   <span className={styles.styleCardLabel}>{s.label}</span>
+                </button>
+              ))}
+            </div>
+          </div>
+
+          <div className={styles.section}>
+            <div className={styles.sectionLabel}>DRIVE VIEW</div>
+            <div className={styles.styleGrid}>
+              {VIEW_MODES.map(v => (
+                <button key={v.key} className={`${styles.styleCard} ${cockpitView === v.key ? styles.styleCardActive : ''}`} onClick={() => setCockpitView(v.key)}>
+                  <span className={styles.styleCardIcon}>{v.icon}</span>
+                  <span className={styles.styleCardLabel}>{v.label}</span>
+                </button>
+              ))}
+            </div>
+          </div>
+
+          <div className={styles.section}>
+            <div className={styles.sectionLabel}>VEHICLE PROFILE</div>
+            <div className={styles.styleGrid}>
+              {COCKPIT_MODES.map(v => (
+                <button key={v.key} className={`${styles.styleCard} ${cockpitMode === v.key ? styles.styleCardActive : ''}`} onClick={() => setCockpitMode(v.key)}>
+                  <span className={styles.styleCardIcon}>{v.icon}</span>
+                  <span className={styles.styleCardLabel}>{v.label}</span>
                 </button>
               ))}
             </div>
@@ -139,12 +177,9 @@ function SettingsOverlay({ onClose }) {
             <ToggleRow label="3D Buildings"  value={is3D}         onChange={setIs3D} />
             <ToggleRow label="Driving View"  value={drivingView}  onChange={setDrivingView} />
             <ToggleRow label="Live Traffic"  value={showTraffic}  onChange={setShowTraffic} />
-            <ToggleRow label="Speed HUD"     value={showSpeedHUD} onChange={setShowSpeedHUD} />
           </div>
 
-          <div className={styles.appVersion}>
-            3D Streets v1.0 · Game UI branch
-          </div>
+          <div className={styles.appVersion}>3D Streets v1.0 · Game UI branch</div>
         </div>
       </motion.div>
     </>
@@ -155,12 +190,7 @@ function ToggleRow({ label, value, onChange }) {
   return (
     <div className={styles.toggleRow}>
       <span className={styles.toggleLabel}>{label}</span>
-      <button
-        className={`${styles.toggle} ${value ? styles.toggleOn : ''}`}
-        onClick={() => onChange(!value)}
-        role="switch"
-        aria-checked={value}
-      >
+      <button className={`${styles.toggle} ${value ? styles.toggleOn : ''}`} onClick={() => onChange(!value)} role="switch" aria-checked={value}>
         <div className={styles.toggleThumb} />
       </button>
     </div>
