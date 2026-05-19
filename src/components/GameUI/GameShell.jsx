@@ -101,24 +101,28 @@ export default function GameShell() {
 
       <div className={styles.centerGuide}><span /></div>
 
-      <div className={styles.leftStack}>
-        <div className={styles.metricCard}>
-          <span className={styles.metricLabel}>Heading</span>
-          <strong>{compassLabel} {heading} deg</strong>
+      {navActive && (
+        <div className={styles.leftStack}>
+          <div className={styles.metricCard}>
+            <span className={styles.metricLabel}>Heading</span>
+            <strong>{compassLabel} {heading}&deg;</strong>
+          </div>
+          <div className={styles.metricCard}>
+            <span className={styles.metricLabel}>Limit</span>
+            <strong>{speedLimit || '--'} MPH</strong>
+          </div>
         </div>
-        <div className={styles.metricCard}>
-          <span className={styles.metricLabel}>Limit</span>
-          <strong>{speedLimit || '--'} MPH</strong>
-        </div>
-      </div>
+      )}
 
-      <div className={styles.rightStack}>
-        <div className={styles.objectiveCard}>
-          <span className={styles.metricLabel}>Route</span>
-          <strong>{navActive ? remainingDist || 'Active' : 'Ready'}</strong>
-          <small>{navActive ? 'Continue to destination' : 'Search, preview, then launch'}</small>
+      {navActive && (
+        <div className={styles.rightStack}>
+          <div className={styles.objectiveCard}>
+            <span className={styles.metricLabel}>Route</span>
+            <strong>{remainingDist || 'Active'}</strong>
+            <small>{remainingDist || '—'} remaining</small>
+          </div>
         </div>
-      </div>
+      )}
 
       <motion.div
         className={styles.cockpit}
@@ -141,11 +145,13 @@ export default function GameShell() {
             <div className={styles.wheelHub} />
           </motion.div>
 
-          <div className={styles.centerScreen}>
-            <span className={styles.metricLabel}>Next</span>
-            <strong>{activeStep?.distanceLabel ?? 'Ready'}</strong>
-            <p>{activeStep?.instruction ?? 'Start navigation to activate route guidance.'}</p>
-          </div>
+          {navActive && (
+            <div className={styles.centerScreen}>
+              <span className={styles.metricLabel}>Next</span>
+              <strong>{activeStep?.distanceLabel ?? '—'}</strong>
+              <p>{activeStep?.instruction ?? 'Continue on current road'}</p>
+            </div>
+          )}
         </div>
       </motion.div>
 
@@ -154,15 +160,19 @@ export default function GameShell() {
           <span>{Math.round(speedMPH || 0)}</span>
           <small>MPH</small>
         </div>
-        <div className={styles.turnCard}>
-          <span className={styles.metricLabel}>{navActive ? 'Next Move' : 'Drive Mode'}</span>
-          <strong>{activeStep?.distanceLabel ?? profile.label}</strong>
-          <p>{activeStep?.instruction ?? profile.tagline}</p>
-        </div>
-        <div className={styles.etaCard}>
-          <span className={styles.metricLabel}>ETA</span>
-          <strong>{eta || '--:--'}</strong>
-        </div>
+        {navActive && (
+          <>
+            <div className={styles.turnCard}>
+              <span className={styles.metricLabel}>Next Move</span>
+              <strong>{activeStep?.distanceLabel ?? '—'}</strong>
+              <p>{activeStep?.instruction ?? 'Continue on current road'}</p>
+            </div>
+            <div className={styles.etaCard}>
+              <span className={styles.metricLabel}>ETA</span>
+              <strong>{eta || '--:--'}</strong>
+            </div>
+          </>
+        )}
       </div>
     </motion.div>
   )
