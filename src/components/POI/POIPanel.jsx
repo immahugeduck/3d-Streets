@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react'
 import { motion } from 'framer-motion'
 import useStore from '../../store/appStore'
-import { searchPOI } from '../../services/mapboxService'
+import { searchPOI } from '../../services/googlePlacesService'
 import styles from './POIPanel.module.css'
 
 const CATEGORIES = [

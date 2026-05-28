@@ -1,7 +1,7 @@
 import { useState, useRef, useCallback } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import useStore, { PHASE } from '../../store/appStore'
-import { searchPlaces } from '../../services/mapboxService'
+import { searchPlaces, resolvePlaceCoords } from '../../services/googlePlacesService'
 import { parseDestination } from '../../services/anthropicService'
 import styles from './SearchBar.module.css'
 
@@ -108,10 +108,24 @@ export default function SearchBar() {
     if (e.key === 'Escape') closeDropdown()
   }
 
-  function selectResult(place) {
-    saveRecent(place)
+  async function selectResult(place) {
+    let resolved = place
+    if (place.needsDetails && place.placeId) {
+      setLoading(true)
+      const details = await resolvePlaceCoords(place.placeId)
+      setLoading(false)
+      if (!details?.lat) return
+      resolved = {
+        ...place,
+        lat:     details.lat,
+        lng:     details.lng,
+        name:    details.name    || place.name,
+        address: details.address || place.address,
+      }
+    }
+    saveRecent(resolved)
     setRecent(loadRecent())
-    setDestination(place)
+    setDestination(resolved)
     setPhase(PHASE.ROUTE_PREVIEW)
     setQuery('')
     setResults([])
@@ -248,7 +262,7 @@ export default function SearchBar() {
                   <button key={r.id} className={styles.resultRow} onClick={() => selectResult(r)}>
                     <div className={styles.resultIcon}>
                       <span className={styles.resultEmoji}>
-                        {getPlaceEmoji(r.maki, r.category, r.placeType)}
+                        {r.emoji || getPlaceEmoji(r.maki, r.category, r.placeType)}
                       </span>
                     </div>
                     <div className={styles.resultText}>
@@ -257,6 +271,9 @@ export default function SearchBar() {
                     </div>
                     {r.distance != null && (
                       <div className={styles.resultDist}>{formatDist(r.distance)}</div>
+                    )}
+                    {r.needsDetails && (
+                      <div className={styles.resultDist} style={{ opacity: 0.4, fontSize: '10px' }}>G</div>
                     )}
                   </button>
                 ))}
