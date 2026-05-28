@@ -1,6 +1,6 @@
 import { useEffect, useRef, useCallback } from 'react'
 import useStore, { PHASE, ROUTE_PREFS } from '../store/appStore'
-import { getDirections, haversineM, formatDist, formatDur, pointToLineDistanceM } from '../services/mapboxService'
+import { getDirections, haversineM, formatDist, formatDur, pointToLineDistanceM } from '../services/googleMapsService'
 import { drawRoute, clearRoute } from '../components/Map/MapView'
 
 // ── Constants ─────────────────────────────────────────────────────────────

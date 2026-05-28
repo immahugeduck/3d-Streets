@@ -6,19 +6,11 @@ const HOME_LOCATION = { lat: 39.6448, lng: -86.8647 }
 
 async function getIPLocation() {
   try {
-    // Use Mapbox's temporary geocoding endpoint to get IP-based location
-    const token = import.meta.env.VITE_MAPBOX_TOKEN || ''
-    const res = await fetch(
-      `https://api.mapbox.com/geocoding/v5/mapbox.places/ip.json?access_token=${token}&types=place`
-    )
+    const res = await fetch('https://ipapi.co/json/')
     if (!res.ok) return null
     const data = await res.json()
-    const feature = data.features?.[0]
-    if (feature?.geometry?.coordinates) {
-      return {
-        lat: feature.geometry.coordinates[1],
-        lng: feature.geometry.coordinates[0],
-      }
+    if (data.latitude && data.longitude) {
+      return { lat: data.latitude, lng: data.longitude }
     }
   } catch {
     // silently fall through

@@ -9,17 +9,11 @@ export const PHASE = {
 }
 
 export const MAP_STYLES = {
-  dark: {
-    uri:         'mapbox://styles/mapbox/standard',
-    label:       'Dark',
-    icon:        '🌑',
-    isStandard:  true,
-    lightPreset: 'night',
-  },
-  satellite: { uri: 'mapbox://styles/mapbox/satellite-streets-v12', label: 'Satellite', icon: '🛰️' },
-  streets:   { uri: 'mapbox://styles/mapbox/streets-v12', label: 'Streets', icon: '🗺️' },
-  outdoors:  { uri: 'mapbox://styles/mapbox/outdoors-v12', label: 'Terrain', icon: '⛰️' },
-  light:     { uri: 'mapbox://styles/mapbox/light-v11', label: 'Light', icon: '☀️' },
+  dark:      { label: 'Dark',      icon: '🌑', gmType: 'roadmap', gmStyle: null /* MapView default */ },
+  satellite: { label: 'Satellite', icon: '🛰️', gmType: 'hybrid',  gmStyle: null },
+  streets:   { label: 'Streets',   icon: '🗺️', gmType: 'roadmap', gmStyle: [] /* Google default */ },
+  outdoors:  { label: 'Terrain',   icon: '⛰️', gmType: 'terrain', gmStyle: null },
+  light:     { label: 'Light',     icon: '☀️', gmType: 'roadmap', gmStyle: [] /* Google default */ },
 }
 
 export const ROUTE_PREFS = {

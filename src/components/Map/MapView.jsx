@@ -1,34 +1,75 @@
 import { useEffect, useRef } from 'react'
-import mapboxgl from 'mapbox-gl'
+import { Loader } from '@googlemaps/js-api-loader'
 import useStore, { MAP_STYLES, PHASE } from '../../store/appStore'
 import styles from './MapView.module.css'
 
-mapboxgl.accessToken = import.meta.env.VITE_MAPBOX_TOKEN || ''
+const API_KEY = import.meta.env.VITE_GOOGLE_MAPS_KEY || ''
 
-// ── Route color constants — change these to retheme the route line ─────────
-const ROUTE_COLOR        = '#39D0FF'  // bright cyan primary line
-const ROUTE_CASING_COLOR = '#0B2A4A'  // deep navy border for contrast
-const ROUTE_GLOW_COLOR   = '#1EA7FF'  // vivid blue bloom
-const ROUTE_ALT_COLOR    = '#7A8796'  // subdued slate for alternate routes
-const MAX_DRIVING_SPEED_MPH    = 85    // cap camera look-ahead growth at highway speed
-const BASE_LOOK_AHEAD_M        = 55    // forward anchor even when near stopped
-const SPEED_LOOK_AHEAD_FACTOR  = 0.9   // extra meters of look-ahead per MPH
+// ── Route visual constants ────────────────────────────────────────────────
+const ROUTE_COLOR        = '#39D0FF'
+const ROUTE_CASING_COLOR = '#0B2A4A'
+const ROUTE_GLOW_COLOR   = '#1EA7FF'
+const ROUTE_ALT_COLOR    = '#7A8796'
 
-// ── Module-level caches ───────────────────────────────────────────────────
-let _drawnRoutes      = []
-let _routeCoordinates = []
+const MAX_DRIVING_SPEED_MPH   = 85
+const BASE_LOOK_AHEAD_M       = 55
+const SPEED_LOOK_AHEAD_FACTOR = 0.9
+
+// ── Google Maps dark style ────────────────────────────────────────────────
+const DARK_GM_STYLE = [
+  { elementType: 'geometry',           stylers: [{ color: '#0d1117' }] },
+  { elementType: 'labels.icon',        stylers: [{ visibility: 'off' }] },
+  { elementType: 'labels.text.fill',   stylers: [{ color: '#8a9bb2' }] },
+  { elementType: 'labels.text.stroke', stylers: [{ color: '#0d1117' }] },
+  { featureType: 'administrative.land_parcel',  stylers: [{ visibility: 'off' }] },
+  { featureType: 'administrative.neighborhood', stylers: [{ visibility: 'off' }] },
+  { featureType: 'poi',          elementType: 'geometry',      stylers: [{ color: '#131c2e' }] },
+  { featureType: 'poi',          elementType: 'labels.text',   stylers: [{ visibility: 'off' }] },
+  { featureType: 'poi.park',     elementType: 'geometry',      stylers: [{ color: '#0e1d26' }] },
+  { featureType: 'poi.park',     elementType: 'labels.text.fill', stylers: [{ color: '#4a6741' }] },
+  { featureType: 'road',         elementType: 'geometry',      stylers: [{ color: '#1c2740' }] },
+  { featureType: 'road',         elementType: 'geometry.stroke', stylers: [{ color: '#0a1020' }] },
+  { featureType: 'road',         elementType: 'labels.text.fill', stylers: [{ color: '#9ca5b3' }] },
+  { featureType: 'road.highway', elementType: 'geometry',      stylers: [{ color: '#1e3a5f' }] },
+  { featureType: 'road.highway', elementType: 'geometry.stroke', stylers: [{ color: '#0d1117' }] },
+  { featureType: 'road.highway', elementType: 'labels.text.fill', stylers: [{ color: '#f3d19c' }] },
+  { featureType: 'transit',      elementType: 'geometry',      stylers: [{ color: '#1a2035' }] },
+  { featureType: 'transit.station', elementType: 'labels.text.fill', stylers: [{ color: '#d59563' }] },
+  { featureType: 'water',        elementType: 'geometry',      stylers: [{ color: '#071018' }] },
+  { featureType: 'water',        elementType: 'labels.text.fill', stylers: [{ color: '#515c6d' }] },
+  { featureType: 'water',        elementType: 'labels.text.stroke', stylers: [{ color: '#071018' }] },
+]
+
+const LIGHT_GM_STYLE = null // Google default light style
+
+// ── Module-level singletons ───────────────────────────────────────────────
+let _googleApi         = null  // { maps } after loader resolves
+let _mapInstance       = null  // google.maps.Map
+let _routePolylines    = []    // active route polylines on map
+let _routeCoordinates  = []    // [[lng,lat]…] for off-route detection
+let _trafficLayer      = null
+let _loaderPromise     = null
 
 export function setRouteGeometry(coords) {
   _routeCoordinates = Array.isArray(coords) ? coords : []
 }
 
+function getLoader() {
+  if (_loaderPromise) return _loaderPromise
+  _loaderPromise = new Loader({
+    apiKey:  API_KEY,
+    version: 'weekly',
+    libraries: ['maps', 'marker'],
+  }).load()
+  return _loaderPromise
+}
+
 // ── Component ─────────────────────────────────────────────────────────────
 export default function MapView() {
   const containerRef        = useRef(null)
-  const mapRef              = useRef(null)
   const userMarkerRef       = useRef(null)
   const lastCameraUpdateRef = useRef(0)
-  const hasCenteredOnUser = useRef(false)
+  const hasCenteredOnUser   = useRef(false)
 
   const setMapRef       = useStore(s => s.setMapRef)
   const setUserLocation = useStore(s => s.setUserLocation)
@@ -41,175 +82,159 @@ export default function MapView() {
   const phase           = useStore(s => s.phase)
   const drivingView     = useStore(s => s.drivingView)
 
-  // ── Map init ───────────────────────────────────────────────────────────
+  // ── Map init ─────────────────────────────────────────────────────────
   useEffect(() => {
-    if (mapRef.current) return
-    // Default center: Greencastle, IN (user's home area)
-    const map = new mapboxgl.Map({
-      container:          containerRef.current,
-      style:              MAP_STYLES.dark.uri,
-      center:             [-86.8647, 39.6448],
-      zoom:               12,
-      pitch:              55,
-      bearing:            0,
-      antialias:          true,
-      attributionControl: false,
-    })
+    if (_mapInstance) {
+      // Map already exists — reattach to new container (StrictMode remount)
+      containerRef.current && _mapInstance.setOptions({ mapTypeControl: false })
+      return
+    }
 
-    map.on('load', () => {
+    getLoader().then(google => {
+      _googleApi = google
+
       const styleDef = MAP_STYLES[useStore.getState().mapStyle] ?? MAP_STYLES.dark
-      if (styleDef.isStandard) {
-        applyStandardConfig(map, styleDef.lightPreset)
-      } else {
-        add3DBuildings(map)
-      }
-      addTerrain(map)
-      addTrafficLayers(map)
-      syncTrafficVisibility(map, showTraffic)
 
-      // Fly to user's GPS position as soon as map is ready
+      const map = new google.maps.Map(containerRef.current, {
+        center:           { lat: 39.6448, lng: -86.8647 },
+        zoom:             12,
+        tilt:             55,
+        heading:          0,
+        mapTypeId:        styleDef.gmType || 'roadmap',
+        styles:           styleDef.gmStyle ?? DARK_GM_STYLE,
+        disableDefaultUI: true,
+        gestureHandling:  'greedy',
+        isFractionalZoomEnabled: true,
+      })
+
+      _mapInstance         = map
+      window._3dstreetsMap = map
+      setMapRef(map)
+
+      _trafficLayer = new google.maps.TrafficLayer()
+      _trafficLayer.setOptions({ autoRefresh: true })
+      if (useStore.getState().showTraffic) _trafficLayer.setMap(map)
+
+      // Fly to user GPS on first load
       if (navigator.geolocation) {
         navigator.geolocation.getCurrentPosition(
-          ({ coords }) => {
-            const { latitude: lat, longitude: lng } = coords
+          ({ coords: { latitude: lat, longitude: lng } }) => {
             setUserLocation({ lat, lng })
-            map.flyTo({ center: [lng, lat], zoom: 15, pitch: 55, duration: 1800, essential: true })
+            map.panTo({ lat, lng })
+            map.setZoom(15)
           },
-          (err) => console.warn('[MapView] Geolocation unavailable:', err.message),
-          { enableHighAccuracy: true, timeout: 8000 }
+          err => console.warn('[MapView] Geolocation unavailable:', err.message),
+          { enableHighAccuracy: true, timeout: 8000 },
         )
       }
     })
 
-    mapRef.current       = map
-    setMapRef(map)
-    window._3dstreetsMap = map
-
-    return () => { map.remove(); mapRef.current = null }
+    return () => {
+      // Don't destroy the map on unmount — Google Maps teardown is expensive
+      // and StrictMode mounts twice. The module-level singleton persists.
+    }
   }, []) // eslint-disable-line react-hooks/exhaustive-deps
 
-  // ── Style switching ────────────────────────────────────────────────────
+  // ── Style switching ──────────────────────────────────────────────────
   useEffect(() => {
-    const map = mapRef.current
-    if (!map) return
+    if (!_mapInstance) return
     const styleDef = MAP_STYLES[mapStyle] ?? MAP_STYLES.dark
-    map.setStyle(styleDef.uri)
-    map.once('style.load', () => {
-      if (styleDef.isStandard) {
-        applyStandardConfig(map, styleDef.lightPreset)
-      } else {
-        add3DBuildings(map)
-      }
-      addTerrain(map)
-      _drawnRoutes.forEach(({ geojson, isAlternate }) =>
-        _applyRouteToMap(map, geojson, isAlternate)
-      )
-      addTrafficLayers(map)
-      syncTrafficVisibility(map, showTraffic)
-    })
-  }, [mapStyle, showTraffic])
+    _mapInstance.setMapTypeId(styleDef.gmType || 'roadmap')
+    _mapInstance.setOptions({ styles: styleDef.gmStyle ?? DARK_GM_STYLE })
+  }, [mapStyle])
 
-  // ── 3D pitch toggle (not while navigating) ────────────────────────────
+  // ── 3D pitch toggle ──────────────────────────────────────────────────
   useEffect(() => {
-    const map = mapRef.current
-    if (!map || phase === PHASE.NAVIGATING) return
-    map.easeTo({ pitch: is3D ? 55 : 0, duration: 600 })
+    if (!_mapInstance || phase === PHASE.NAVIGATING) return
+    _mapInstance.setTilt(is3D ? 55 : 0)
   }, [is3D, phase])
 
-  // ── Traffic layer sync ────────────────────────────────────────────────
+  // ── Traffic layer sync ───────────────────────────────────────────────
   useEffect(() => {
-    const map = mapRef.current
-    if (!map) return
-    if (map.isStyleLoaded()) syncTrafficVisibility(map, showTraffic)
-    else map.once('style.load', () => syncTrafficVisibility(map, showTraffic))
+    if (!_trafficLayer) return
+    _trafficLayer.setMap(showTraffic ? _mapInstance : null)
   }, [showTraffic])
 
-  // ── User puck marker ──────────────────────────────────────────────────
+  // ── User location puck ───────────────────────────────────────────────
   useEffect(() => {
-    const map = mapRef.current
-    if (!map || !userLocation) return
+    if (!_mapInstance || !_googleApi || !userLocation) return
 
     if (!userMarkerRef.current) {
-      const el = createUserPuck()
-      userMarkerRef.current = new mapboxgl.Marker({
-        element:           el,
-        rotationAlignment: 'map',
-        pitchAlignment:    'map',
-      })
-        .setLngLat([userLocation.lng, userLocation.lat])
-        .addTo(map)
+      const el  = createPuckElement()
+      const Adv = _googleApi.maps.marker?.AdvancedMarkerElement
+      if (Adv) {
+        userMarkerRef.current = new Adv({
+          position: { lat: userLocation.lat, lng: userLocation.lng },
+          map:      _mapInstance,
+          content:  el,
+        })
+      } else {
+        userMarkerRef.current = new _googleApi.maps.Marker({
+          position: { lat: userLocation.lat, lng: userLocation.lng },
+          map:      _mapInstance,
+          icon:     { url: puckSvgUrl(), scaledSize: new _googleApi.maps.Size(28, 28) },
+        })
+      }
     } else {
-      userMarkerRef.current.setLngLat([userLocation.lng, userLocation.lat])
+      const pos = { lat: userLocation.lat, lng: userLocation.lng }
+      userMarkerRef.current.position
+        ? (userMarkerRef.current.position = pos)
+        : userMarkerRef.current.setPosition(pos)
     }
 
-    if (userHeading !== null && userHeading !== undefined) {
+    if (userHeading != null && userMarkerRef.current.setRotation) {
       userMarkerRef.current.setRotation(userHeading)
     }
 
-    // Fly to user's location on the first fix (GPS or IP), skip during active navigation
     if (!hasCenteredOnUser.current && phase !== PHASE.NAVIGATING) {
       hasCenteredOnUser.current = true
-      const flyWhenReady = () => {
-        map.flyTo({ center: [userLocation.lng, userLocation.lat], zoom: 14, pitch: 55, duration: 1200 })
-      }
-      if (map.isStyleLoaded()) {
-        flyWhenReady()
-      } else {
-        map.once('load', flyWhenReady)
-      }
+      _mapInstance.panTo({ lat: userLocation.lat, lng: userLocation.lng })
+      _mapInstance.setZoom(14)
+      _mapInstance.setTilt(is3D ? 55 : 0)
     }
-  }, [userLocation, userHeading])
+  }, [userLocation, userHeading]) // eslint-disable-line react-hooks/exhaustive-deps
 
-  // ── Hide puck in driving view (hood IS the location indicator) ────────
+  // ── Hide puck in driving view ────────────────────────────────────────
   useEffect(() => {
     if (!userMarkerRef.current) return
-    const el = userMarkerRef.current.getElement()
-    if (phase === PHASE.NAVIGATING && (drivingView || is3D)) {
-      el.style.opacity       = '0'
-      el.style.pointerEvents = 'none'
-    } else {
-      el.style.opacity       = '1'
-      el.style.pointerEvents = 'auto'
+    const el = userMarkerRef.current.content ?? userMarkerRef.current.getIcon?.()
+    if (!el) return
+    const hide = phase === PHASE.NAVIGATING && (drivingView || is3D)
+    if (userMarkerRef.current.content) {
+      userMarkerRef.current.content.style.opacity = hide ? '0' : '1'
     }
   }, [phase, drivingView, is3D])
 
-  // ── Camera follow during navigation ───────────────────────────────────
+  // ── Camera follow during navigation ─────────────────────────────────
   useEffect(() => {
-    const map = mapRef.current
-    if (!map || !userLocation || phase !== PHASE.NAVIGATING) return
+    if (!_mapInstance || !userLocation || phase !== PHASE.NAVIGATING) return
 
     const now = Date.now()
-    if (now - lastCameraUpdateRef.current < 250) return  // ≤ 4 Hz
+    if (now - lastCameraUpdateRef.current < 250) return
     lastCameraUpdateRef.current = now
 
-    const bearing = (userHeading !== null && userHeading !== undefined)
-      ? userHeading
-      : map.getBearing()
+    const heading = userHeading ?? _mapInstance.getHeading() ?? 0
 
     if (drivingView) {
-      // Windshield perspective: lower horizon with stronger pitch and
-      // speed-aware look-ahead so motion feels like cockpit driving.
       const clampedSpeed = Math.max(0, Math.min(speedMPH ?? 0, MAX_DRIVING_SPEED_MPH))
-      const lookAheadM = BASE_LOOK_AHEAD_M + (clampedSpeed * SPEED_LOOK_AHEAD_FACTOR)
-      const bearingRad   = bearing * (Math.PI / 180)
+      const lookAheadM   = BASE_LOOK_AHEAD_M + clampedSpeed * SPEED_LOOK_AHEAD_FACTOR
+      const bearingRad   = heading * (Math.PI / 180)
       const latRad       = userLocation.lat * (Math.PI / 180)
       const dLat = (lookAheadM * Math.cos(bearingRad)) / 111320
       const dLng = (lookAheadM * Math.sin(bearingRad)) / (111320 * Math.cos(latRad))
 
-      map.easeTo({
-        center:   [userLocation.lng + dLng, userLocation.lat + dLat],
-        zoom:     19,
-        pitch:    78,
-        bearing,
-        duration: 250,
+      _mapInstance.moveCamera({
+        center:  { lat: userLocation.lat + dLat, lng: userLocation.lng + dLng },
+        zoom:    19,
+        tilt:    78,
+        heading,
       })
     } else {
-      map.easeTo({
-        center:   [userLocation.lng, userLocation.lat],
-        zoom:     17.5,
-        pitch:    is3D ? 70 : 0,
-        bearing,
-        duration: 500,
+      _mapInstance.moveCamera({
+        center:  { lat: userLocation.lat, lng: userLocation.lng },
+        zoom:    17.5,
+        tilt:    is3D ? 70 : 0,
+        heading,
       })
     }
   }, [userLocation, userHeading, phase, is3D, drivingView, speedMPH])
@@ -217,258 +242,133 @@ export default function MapView() {
   return <div ref={containerRef} className={styles.mapContainer} />
 }
 
-// ── Mapbox Standard style config ──────────────────────────────────────────
-// Standard has built-in 3D buildings with dynamic lighting — configure via
-// the config API instead of adding manual fill-extrusion layers.
-function applyStandardConfig(map, lightPreset = 'night') {
-  try {
-    map.setConfigProperty('basemap', 'lightPreset',              lightPreset)
-    map.setConfigProperty('basemap', 'showPointOfInterestLabels', true)
-    map.setConfigProperty('basemap', 'showTransitLabels',         true)
-    map.setConfigProperty('basemap', 'showPlaceLabels',           true)
-    map.setConfigProperty('basemap', 'showRoadLabels',            true)
-  } catch (_) { /* style may not have fully loaded yet */ }
-}
-
-// ── 3D buildings (legacy styles only) ────────────────────────────────────
-function add3DBuildings(map) {
-  if (map.getLayer('3d-buildings')) return
-  const layers       = map.getStyle().layers
-  const labelLayerId = layers.find(l => l.type === 'symbol' && l.layout?.['text-field'])?.id
-
-  map.addLayer({
-    id:             '3d-buildings',
-    source:         'composite',
-    'source-layer': 'building',
-    filter:         ['==', 'extrude', 'true'],
-    type:           'fill-extrusion',
-    minzoom:        14,
-    paint: {
-      'fill-extrusion-color': ['interpolate', ['linear'], ['zoom'], 14, '#111827', 16, '#1C2333'],
-      'fill-extrusion-height': ['interpolate', ['linear'], ['zoom'], 14, 0, 14.05, ['get', 'height']],
-      'fill-extrusion-base':   ['interpolate', ['linear'], ['zoom'], 14, 0, 14.05, ['get', 'min_height']],
-      'fill-extrusion-opacity':                     0.8,
-      'fill-extrusion-ambient-occlusion-intensity': 0.4,
-      'fill-extrusion-ambient-occlusion-radius':    4,
-    },
-  }, labelLayerId)
-}
-
-// ── Terrain + atmosphere ──────────────────────────────────────────────────
-function addTerrain(map) {
-  if (!map.getSource('mapbox-dem')) {
-    map.addSource('mapbox-dem', {
-      type:     'raster-dem',
-      url:      'mapbox://mapbox.mapbox-terrain-dem-v1',
-      tileSize: 512,
-      maxzoom:  14,
-    })
-  }
-  map.setTerrain({ source: 'mapbox-dem', exaggeration: 1.3 })
-  map.setFog({
-    color:            'rgb(8, 12, 22)',
-    'high-color':     'rgb(18, 24, 46)',
-    'horizon-blend':  0.05,
-    'space-color':    'rgb(3, 6, 16)',
-    'star-intensity': 0.6,
-  })
-}
-
-// ── Traffic layer ─────────────────────────────────────────────────────────
-function addTrafficLayers(map) {
-  if (!map.getSource('mapbox-traffic')) {
-    map.addSource('mapbox-traffic', { type: 'vector', url: 'mapbox://mapbox.mapbox-traffic-v1' })
-  }
-  if (!map.getLayer('traffic-line')) {
-    map.addLayer({
-      id:             'traffic-line',
-      type:           'line',
-      source:         'mapbox-traffic',
-      'source-layer': 'traffic',
-      slot:           'top',
-      minzoom:        8,
-      paint: {
-        'line-width':   ['interpolate', ['linear'], ['zoom'], 8, 1.5, 14, 4.5, 18, 8],
-        'line-opacity': 0.85,
-        'line-color': [
-          'match', ['get', 'congestion'],
-          'low',      '#22c55e',
-          'moderate', '#f59e0b',
-          'heavy',    '#ef4444',
-          'severe',   '#b91c1c',
-          '#64748b',
-        ],
-      },
-      layout: { 'line-cap': 'round', 'line-join': 'round', visibility: 'none' },
-    })
-  }
-}
-
-function syncTrafficVisibility(map, showTraffic) {
-  if (!map.getLayer('traffic-line')) return
-  map.setLayoutProperty('traffic-line', 'visibility', showTraffic ? 'visible' : 'none')
-}
-
-// ── User puck — orange directional dot ───────────────────────────────────
-function createUserPuck() {
+// ── User puck ─────────────────────────────────────────────────────────────
+function createPuckElement() {
   const el = document.createElement('div')
   el.style.cssText = 'width:28px;height:28px;position:relative;'
   el.innerHTML = `
     <div style="
-      position:absolute; inset:-6px; border-radius:50%;
+      position:absolute;inset:-6px;border-radius:50%;
       background:rgba(255,149,0,0.15);
       animation:puck-ring 2.2s ease-out infinite;
     "></div>
     <div style="
-      position:absolute; inset:0; border-radius:50%;
-      background:radial-gradient(circle at 38% 38%, #FF9500, #CC5500);
+      position:absolute;inset:0;border-radius:50%;
+      background:radial-gradient(circle at 38% 38%,#FF9500,#CC5500);
       border:2.5px solid rgba(255,255,255,0.9);
-      box-shadow:0 0 14px rgba(255,149,0,0.85), 0 0 4px rgba(255,149,0,0.5);
+      box-shadow:0 0 14px rgba(255,149,0,0.85),0 0 4px rgba(255,149,0,0.5);
     "></div>
     <style>
-      @keyframes puck-ring {
-        0%   { transform:scale(1);   opacity:.5 }
-        100% { transform:scale(2.6); opacity:0  }
-      }
+      @keyframes puck-ring{0%{transform:scale(1);opacity:.5}100%{transform:scale(2.6);opacity:0}}
     </style>
   `
   return el
 }
 
-// ── Exported map utilities ────────────────────────────────────────────────
+function puckSvgUrl() {
+  const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="28" height="28" viewBox="0 0 28 28">
+    <circle cx="14" cy="14" r="12" fill="#FF9500" stroke="white" stroke-width="2.5"/>
+  </svg>`
+  return `data:image/svg+xml;base64,${btoa(svg)}`
+}
+
+// ── Exported map utilities (same API as Mapbox version) ───────────────────
+
 export function flyToUser() {
-  const map = window._3dstreetsMap
-  if (!map) return
   const loc = useStore.getState().userLocation
-  if (!loc) return
-  map.flyTo({ center: [loc.lng, loc.lat], zoom: 16, pitch: 55, duration: 1200 })
+  if (!_mapInstance || !loc) return
+  _mapInstance.panTo({ lat: loc.lat, lng: loc.lng })
+  _mapInstance.setZoom(16)
+  _mapInstance.setTilt(55)
 }
 
 export function drawRoute(geojson, isAlternate = false) {
-  const map = window._3dstreetsMap
-  if (!map) return
+  if (!_mapInstance || !_googleApi) return
 
-  if (!isAlternate) {
-    _drawnRoutes = [{ geojson, isAlternate: false }]
+  // Remove existing polylines for this route slot
+  const toRemove = isAlternate
+    ? _routePolylines.filter(p => p._isAlternate)
+    : _routePolylines.filter(p => !p._isAlternate)
+  toRemove.forEach(p => { p.setMap(null); p._layers?.forEach(l => l.setMap(null)) })
+  _routePolylines = isAlternate
+    ? _routePolylines.filter(p => !p._isAlternate)
+    : _routePolylines.filter(p => p._isAlternate)
+
+  const coords = geojson.coordinates.map(([lng, lat]) => ({ lat, lng }))
+
+  if (isAlternate) {
+    const alt = new _googleApi.maps.Polyline({
+      path:          coords,
+      strokeColor:   ROUTE_ALT_COLOR,
+      strokeWeight:  5,
+      strokeOpacity: 0.55,
+      map:           _mapInstance,
+    })
+    alt._isAlternate = true
+    _routePolylines.push(alt)
   } else {
-    _drawnRoutes = [
-      ..._drawnRoutes.filter(r => !r.isAlternate),
-      { geojson, isAlternate: true },
-    ]
-  }
-  _applyRouteToMap(map, geojson, isAlternate)
-}
-
-// Premium route rendering — 3 layers: glow bloom → dark casing → bright line
-function _applyRouteToMap(map, geojson, isAlternate = false) {
-  const sourceId = isAlternate ? 'route-alt'      : 'route-main'
-  const glowId   = isAlternate ? null              : 'route-glow'
-  const casingId = isAlternate ? null              : 'route-casing'
-  const layerId  = isAlternate ? 'route-layer-alt' : 'route-layer'
-
-  ;[layerId, casingId, glowId].filter(Boolean).forEach(id => {
-    if (map.getLayer(id)) map.removeLayer(id)
-  })
-  if (map.getSource(sourceId)) map.removeSource(sourceId)
-
-  map.addSource(sourceId, { type: 'geojson', data: geojson })
-
-  if (!isAlternate) {
-    // Layer 1 — wide soft bloom
-    map.addLayer({
-      id: glowId, type: 'line', source: sourceId,
-      slot: 'top',
-      paint: {
-        'line-color':   ROUTE_GLOW_COLOR,
-        'line-width':   ['interpolate', ['linear'], ['zoom'], 10, 12, 16, 22],
-        'line-blur':    10,
-        'line-opacity': 0.3,
-        'line-emissive-strength': 0.75,
-      },
-      layout: { 'line-cap': 'round', 'line-join': 'round' },
+    // Layer 1 — wide soft glow
+    const glow = new _googleApi.maps.Polyline({
+      path:          coords,
+      strokeColor:   ROUTE_GLOW_COLOR,
+      strokeWeight:  22,
+      strokeOpacity: 0.2,
+      map:           _mapInstance,
     })
-    // Layer 2 — dark casing border
-    map.addLayer({
-      id: casingId, type: 'line', source: sourceId,
-      slot: 'top',
-      paint: {
-        'line-color':   ROUTE_CASING_COLOR,
-        'line-width':   ['interpolate', ['linear'], ['zoom'], 10, 10, 16, 14],
-        'line-opacity': 0.9,
-        'line-emissive-strength': 0.2,
-      },
-      layout: { 'line-cap': 'round', 'line-join': 'round' },
+    // Layer 2 — dark casing
+    const casing = new _googleApi.maps.Polyline({
+      path:          coords,
+      strokeColor:   ROUTE_CASING_COLOR,
+      strokeWeight:  14,
+      strokeOpacity: 0.9,
+      map:           _mapInstance,
     })
+    // Layer 3 — bright line
+    const line = new _googleApi.maps.Polyline({
+      path:          coords,
+      strokeColor:   ROUTE_COLOR,
+      strokeWeight:  8,
+      strokeOpacity: 1.0,
+      map:           _mapInstance,
+    })
+    glow._isAlternate   = false
+    casing._isAlternate = false
+    line._isAlternate   = false
+    _routePolylines.push(glow, casing, line)
   }
-
-  // Layer 3 — main bright route line
-  map.addLayer({
-    id: layerId, type: 'line', source: sourceId,
-    slot: 'top',
-    paint: {
-      'line-color':   isAlternate ? ROUTE_ALT_COLOR : ROUTE_COLOR,
-      'line-width':   isAlternate
-        ? ['interpolate', ['linear'], ['zoom'], 10, 3, 16, 5]
-        : ['interpolate', ['linear'], ['zoom'], 10, 6, 16, 9],
-      'line-opacity': isAlternate ? 0.55 : 1,
-      'line-emissive-strength': isAlternate ? 0.1 : 0.95,
-    },
-    layout: { 'line-cap': 'round', 'line-join': 'round' },
-  })
 }
 
 export function clearRoute() {
-  const map = window._3dstreetsMap
-  _drawnRoutes      = []
+  _routePolylines.forEach(p => p.setMap(null))
+  _routePolylines   = []
   _routeCoordinates = []
-  if (!map) return
-  ;[
-    'route-layer', 'route-layer-alt',
-    'route-glow',  'route-casing',
-    'route-main',  'route-alt',
-    'sketch-layer', 'sketch-source',
-  ].forEach(id => {
-    if (map.getLayer(id))   map.removeLayer(id)
-    if (map.getSource(id)) map.removeSource(id)
-  })
 }
 
-export function fitRoute(coordinates, bottomPad = 320) {
-  const map = window._3dstreetsMap
-  if (!map || !coordinates?.length) return
-  const bounds = coordinates.reduce(
-    (b, c) => b.extend(c),
-    new mapboxgl.LngLatBounds(coordinates[0], coordinates[0])
-  )
-  map.fitBounds(bounds, {
-    padding:  { top: 120, right: 70, bottom: bottomPad, left: 70 },
-    pitch:    52,
-    duration: 1000,
-  })
+export function fitRoute(coordinates) {
+  if (!_mapInstance || !_googleApi || !coordinates?.length) return
+  const bounds = new _googleApi.maps.LatLngBounds()
+  coordinates.forEach(([lng, lat]) => bounds.extend({ lat, lng }))
+  _mapInstance.fitBounds(bounds, { top: 120, right: 70, bottom: 320, left: 70 })
+  _mapInstance.setTilt(52)
 }
 
 export function drawSketchPreview(coords) {
-  const map = window._3dstreetsMap
-  if (!map || coords.length < 2) return
-  if (map.getLayer('sketch-layer'))   map.removeLayer('sketch-layer')
-  if (map.getSource('sketch-source')) map.removeSource('sketch-source')
+  if (!_mapInstance || !_googleApi || coords.length < 2) return
+  clearSketch()
+  const sketch = new _googleApi.maps.Polyline({
+    path:          coords.map(c => ({ lat: c.lat, lng: c.lng })),
+    strokeColor:   ROUTE_COLOR,
+    strokeWeight:  3,
+    strokeOpacity: 0.85,
+    icons: [{ icon: { path: 'M 0,-1 0,1', strokeOpacity: 1, scale: 3 }, offset: '0', repeat: '20px' }],
+    map: _mapInstance,
+  })
+  sketch._isSketch = true
+  _routePolylines.push(sketch)
+}
 
-  map.addSource('sketch-source', {
-    type: 'geojson',
-    data: {
-      type:     'Feature',
-      geometry: { type: 'LineString', coordinates: coords.map(c => [c.lng, c.lat]) },
-    },
-  })
-  map.addLayer({
-    id: 'sketch-layer', type: 'line', source: 'sketch-source',
-    slot: 'top',
-    paint: {
-      'line-color':     ROUTE_COLOR,
-      'line-width':     3,
-      'line-dasharray': [5, 4],
-      'line-opacity':   0.85,
-    },
-    layout: { 'line-cap': 'round', 'line-join': 'round' },
-  })
+function clearSketch() {
+  const sketches = _routePolylines.filter(p => p._isSketch)
+  sketches.forEach(p => p.setMap(null))
+  _routePolylines = _routePolylines.filter(p => !p._isSketch)
 }

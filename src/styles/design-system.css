@@ -83,11 +83,10 @@ html, body, #root {
 /* Prevent iOS bounce scroll */
 body { position: fixed; width: 100%; }
 
-/* ── Mapbox overrides ── */
-.mapboxgl-canvas { outline: none; }
-.mapboxgl-ctrl-logo,
-.mapboxgl-ctrl-attrib { display: none !important; }
-.mapboxgl-ctrl-group { display: none !important; }
+/* ── Google Maps overrides ── */
+.gm-style .gm-style-iw-c { display: none !important; }
+.gm-bundled-control, .gmnoprint { display: none !important; }
+.gm-style-cc { display: none !important; }
 
 /* ── Glass panel ── */
 .glass {

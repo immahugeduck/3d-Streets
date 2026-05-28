@@ -1,7 +1,7 @@
 import { useRef, useEffect, useState, useCallback } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import useStore from '../../store/appStore'
-import { getDirections } from '../../services/mapboxService'
+import { getDirections } from '../../services/googleMapsService'
 import { drawRoute, fitRoute } from '../Map/MapView'
 import styles from './SketchOverlay.module.css'
 

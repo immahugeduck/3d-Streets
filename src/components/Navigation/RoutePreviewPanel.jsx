@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef } from 'react'
 import { motion } from 'framer-motion'
 import useStore, { ROUTE_PREFS, PHASE } from '../../store/appStore'
-import { getDirections } from '../../services/mapboxService'
+import { getDirections } from '../../services/googleMapsService'
 import { generateTripSummary } from '../../services/anthropicService'
 import { drawRoute, fitRoute, clearRoute } from '../Map/MapView'
 import styles from './RoutePreviewPanel.module.css'

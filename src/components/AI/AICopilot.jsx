@@ -98,7 +98,7 @@ export default function AICopilot() {
   }
 
   async function handleAIDestination(placeName) {
-    const { searchPlaces } = await import('../../services/mapboxService')
+    const { searchPlaces } = await import('../../services/googlePlacesService')
     const results = await searchPlaces(placeName, userLocation)
     if (results[0]) {
       setDestination(results[0])
@@ -107,7 +107,7 @@ export default function AICopilot() {
   }
 
   async function handleAIWaypoint(placeName) {
-    const { searchPlaces } = await import('../../services/mapboxService')
+    const { searchPlaces } = await import('../../services/googlePlacesService')
     const results = await searchPlaces(placeName, userLocation)
     if (results[0]) addWaypoint(results[0])
   }
