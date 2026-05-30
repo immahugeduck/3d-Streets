@@ -114,7 +114,7 @@ export default function SearchBar() {
       setLoading(true)
       const details = await resolvePlaceCoords(place.placeId)
       setLoading(false)
-      if (!details?.lat) return
+      if (details?.lat == null) return
       resolved = {
         ...place,
         lat:     details.lat,

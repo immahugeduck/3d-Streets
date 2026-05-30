@@ -270,6 +270,291 @@
   box-shadow: 0 0 34px rgba(0, 212, 255, 0.18);
 }
 
+/* ─── Windshield tint overlay ──────────────────────── */
+.windshieldTint {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 40%;
+  background: linear-gradient(to bottom, rgba(0, 8, 22, 0.52), transparent);
+  pointer-events: none;
+  z-index: 1;
+}
+
+/* ─── Vehicle profile dock ─────────────────────────── */
+.profileDock {
+  position: absolute;
+  top: calc(62px + env(safe-area-inset-top));
+  left: 50%;
+  transform: translateX(-50%);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  z-index: 10;
+  pointer-events: auto;
+}
+
+.profileDock > span {
+  font-size: 9px;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: rgba(146, 232, 255, 0.6);
+}
+
+/* ─── Vehicle tab active state ─────────────────────── */
+.vehicleTabActive {
+  background: linear-gradient(135deg, rgba(0, 212, 255, 0.34), rgba(72, 99, 255, 0.26)) !important;
+  color: #ffffff !important;
+  box-shadow: 0 0 14px rgba(0, 212, 255, 0.24);
+}
+
+/* ─── Center nav guide ─────────────────────────────── */
+.centerGuide {
+  position: absolute;
+  left: 50%;
+  top: 46%;
+  transform: translate(-50%, -50%);
+  width: 2px;
+  height: 48px;
+  z-index: 5;
+  pointer-events: none;
+}
+
+.centerGuide span {
+  display: block;
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(to bottom, transparent, rgba(0, 212, 255, 0.7), transparent);
+}
+
+/* ─── Cockpit container ────────────────────────────── */
+.cockpit {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  height: 34%;
+  z-index: 8;
+  pointer-events: none;
+}
+
+/* ─── Dashboard surface ────────────────────────────── */
+.dashSurface {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(to top, rgba(3, 7, 18, 0.97), rgba(6, 12, 26, 0.84) 60%, transparent);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-top: 1px solid rgba(0, 212, 255, 0.15);
+  box-shadow: 0 -20px 60px rgba(0, 0, 0, 0.65), inset 0 1px 0 rgba(0, 212, 255, 0.1);
+}
+
+/* ─── Instrument cluster ───────────────────────────── */
+.instrumentCluster {
+  position: absolute;
+  left: 48px;
+  top: 50%;
+  transform: translateY(-50%);
+  text-align: left;
+}
+
+.instrumentCluster strong {
+  display: block;
+  font-size: 28px;
+  font-weight: 900;
+  letter-spacing: -0.05em;
+  line-height: 1;
+  margin-top: 4px;
+}
+
+.instrumentCluster small {
+  display: block;
+  font-size: 9px;
+  letter-spacing: 0.14em;
+  color: rgba(146, 232, 255, 0.68);
+  margin-top: 2px;
+}
+
+/* ─── Steering wheel ───────────────────────────────── */
+.steeringWheel {
+  width: 110px;
+  height: 110px;
+  border-radius: 50%;
+  border: 8px solid rgba(28, 38, 58, 0.94);
+  background: radial-gradient(circle at 40% 35%, rgba(55, 70, 95, 0.8), rgba(8, 13, 26, 0.96));
+  box-shadow: 0 6px 28px rgba(0, 0, 0, 0.72), inset 0 1px 0 rgba(255, 255, 255, 0.07), 0 0 0 2px rgba(0, 212, 255, 0.1);
+  display: grid;
+  place-items: center;
+  position: relative;
+  flex-shrink: 0;
+}
+
+.steeringWheel::before,
+.steeringWheel::after {
+  content: '';
+  position: absolute;
+  background: rgba(28, 38, 56, 0.95);
+  border-radius: 2px;
+  pointer-events: none;
+}
+
+.steeringWheel::before {
+  width: 4px;
+  height: 36px;
+  top: 14%;
+  left: 50%;
+  transform: translateX(-50%);
+}
+
+.steeringWheel::after {
+  width: 36px;
+  height: 4px;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+}
+
+/* ─── Steering wheel hub ───────────────────────────── */
+.wheelHub {
+  width: 26px;
+  height: 26px;
+  border-radius: 50%;
+  background: radial-gradient(circle at 38% 34%, rgba(0, 212, 255, 0.46), rgba(0, 100, 160, 0.84));
+  box-shadow: 0 0 14px rgba(0, 212, 255, 0.5), inset 0 1px 0 rgba(255, 255, 255, 0.2);
+  position: relative;
+  z-index: 2;
+}
+
+/* ─── Center infotainment screen ───────────────────── */
+.centerScreen {
+  position: absolute;
+  right: 48px;
+  top: 50%;
+  transform: translateY(-50%);
+  text-align: right;
+  max-width: 160px;
+}
+
+.centerScreen strong {
+  display: block;
+  font-size: 22px;
+  font-weight: 900;
+  letter-spacing: -0.04em;
+  line-height: 1;
+  margin-top: 4px;
+}
+
+.centerScreen p {
+  margin: 4px 0 0;
+  font-size: 10px;
+  color: rgba(218, 237, 255, 0.6);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* ─── Speed pill ───────────────────────────────────── */
+.speedPill {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  background: linear-gradient(145deg, rgba(5, 9, 18, 0.88), rgba(9, 18, 34, 0.72));
+  border: 1px solid rgba(0, 212, 255, 0.24);
+  box-shadow: 0 0 22px rgba(0, 212, 255, 0.08), inset 0 1px 0 rgba(255, 255, 255, 0.07);
+  backdrop-filter: blur(14px);
+  border-radius: 999px;
+  width: 72px;
+  height: 72px;
+}
+
+.speedPill span {
+  font-size: 26px;
+  font-weight: 900;
+  letter-spacing: -0.06em;
+  line-height: 1;
+}
+
+.speedPill small {
+  font-size: 9px;
+  letter-spacing: 0.13em;
+  color: rgba(146, 232, 255, 0.78);
+  margin-top: 1px;
+}
+
+/* ─── View mode state modifiers ────────────────────── */
+.idleView .centerReticle {
+  opacity: 0.5;
+}
+
+.hoodOnly {}
+.fullCockpit {}
+
+/* ─── Wheel profile variants ───────────────────────── */
+.wheelSport {
+  width: 100px;
+  height: 100px;
+  border-width: 7px;
+  border-color: rgba(18, 26, 46, 0.96);
+}
+
+.wheelTruck {
+  width: 122px;
+  height: 122px;
+  border-width: 10px;
+  border-color: rgba(32, 26, 20, 0.92);
+}
+
+.wheelSuv {
+  width: 114px;
+  height: 114px;
+  border-width: 9px;
+  border-color: rgba(24, 32, 50, 0.93);
+}
+
+.wheelVan {
+  width: 118px;
+  height: 118px;
+  border-width: 8px;
+  border-color: rgba(28, 34, 46, 0.9);
+}
+
+.wheelMinimal {
+  width: 96px;
+  height: 96px;
+  border-width: 5px;
+  border-color: rgba(38, 48, 66, 0.88);
+  background: radial-gradient(circle at 40% 35%, rgba(70, 90, 120, 0.5), rgba(8, 12, 24, 0.96));
+}
+
+/* ─── Dash profile variants ────────────────────────── */
+.dashSport .dashSurface {
+  border-top-color: rgba(0, 212, 255, 0.22);
+}
+
+.dashTruck .dashSurface {
+  background: linear-gradient(to top, rgba(6, 9, 20, 0.97), rgba(12, 18, 32, 0.82) 60%, transparent);
+  border-top-color: rgba(140, 180, 220, 0.14);
+}
+
+.dashSuv .dashSurface {
+  border-top-color: rgba(0, 180, 240, 0.16);
+}
+
+.dashVan .dashSurface {
+  border-top-color: rgba(100, 160, 200, 0.12);
+}
+
+.dashMinimal .dashSurface {
+  background: linear-gradient(to top, rgba(5, 7, 14, 0.92), rgba(8, 12, 22, 0.72) 60%, transparent);
+  border-top-color: rgba(80, 140, 200, 0.1);
+  box-shadow: none;
+}
+
 @media (max-width: 720px) {
   .vehicleTabs {
     max-width: 52vw;

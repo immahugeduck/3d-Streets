@@ -45,7 +45,6 @@ export async function searchPlaces(query, proximity = null) {
     input:        query,
     languageCode: 'en',
     regionCode:   'us',
-    includedPrimaryTypes: [],
   }
 
   if (proximity) {

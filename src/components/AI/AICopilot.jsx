@@ -129,24 +129,34 @@ export default function AICopilot() {
   }
 
   async function handleAIDestination(placeName) {
-    const { searchPlaces } = await import('../../services/mapboxService')
+    const { searchPlaces, resolvePlaceCoords } = await import('../../services/googlePlacesService')
     const results = await searchPlaces(placeName, userLocation)
-    if (results[0]) {
-      setDestination(results[0])
-      setPhase(PHASE.ROUTE_PREVIEW)
-      return results[0]
+    if (!results[0]) return null
+    const place = results[0]
+    let resolved = place
+    if (place.needsDetails && place.placeId) {
+      const details = await resolvePlaceCoords(place.placeId)
+      if (details?.lat == null) return null
+      resolved = { ...place, lat: details.lat, lng: details.lng, name: details.name || place.name, address: details.address || place.address }
     }
-    return null
+    setDestination(resolved)
+    setPhase(PHASE.ROUTE_PREVIEW)
+    return resolved
   }
 
   async function handleAIWaypoint(placeName) {
-    const { searchPlaces } = await import('../../services/mapboxService')
+    const { searchPlaces, resolvePlaceCoords } = await import('../../services/googlePlacesService')
     const results = await searchPlaces(placeName, userLocation)
-    if (results[0]) {
-      addWaypoint(results[0])
-      return results[0]
+    if (!results[0]) return null
+    const place = results[0]
+    let resolved = place
+    if (place.needsDetails && place.placeId) {
+      const details = await resolvePlaceCoords(place.placeId)
+      if (details?.lat == null) return null
+      resolved = { ...place, lat: details.lat, lng: details.lng, name: details.name || place.name, address: details.address || place.address }
     }
-    return null
+    addWaypoint(resolved)
+    return resolved
   }
 
   async function handleNaturalLanguageDestination(text) {

@@ -43,9 +43,9 @@ export const ROUTE_PREFS = {
     label:        'Accessible',
     icon:         '◉',
     profile:      'mapbox/driving-traffic',
-    exclude:      null,
+    exclude:      'ferry',
     alternatives: true,
-    description:  'Favors routes with more fuel, food, and stop options',
+    description:  'Traffic-aware, avoids ferries, maximizes alternatives',
   },
 }
 
