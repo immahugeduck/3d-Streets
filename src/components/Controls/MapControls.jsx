@@ -21,6 +21,10 @@ export default function MapControls() {
   const saveCurrentRoute  = useStore(s => s.saveCurrentRoute)
   const restoreSavedRoute = useStore(s => s.restoreSavedRoute)
   const clearSavedRoute   = useStore(s => s.clearSavedRoute)
+  const pinDropMode       = useStore(s => s.pinDropMode)
+  const setPinDropMode    = useStore(s => s.setPinDropMode)
+  const cockpitMode       = useStore(s => s.cockpitMode)
+  const setCockpitMode    = useStore(s => s.setCockpitMode)
 
   // Hide during navigation/sketch
   if (phase === PHASE.NAVIGATING || phase === PHASE.SKETCHING) return null
@@ -126,6 +130,20 @@ export default function MapControls() {
         )}
       </button>
 
+      {/* Save pin */}
+      <button className={`${styles.btn} ${pinDropMode ? styles.active : ''}`} onClick={() => setPinDropMode(!pinDropMode)} title="Tap map to drop a saved pin">
+        <PinIcon />
+      </button>
+
+      {/* Cockpit mode */}
+      <button
+        className={styles.btn}
+        onClick={() => setCockpitMode(cockpitMode === 'comfort' ? 'sport' : cockpitMode === 'sport' ? 'cinematic' : 'comfort')}
+        title={`Cockpit mode: ${cockpitMode}`}
+      >
+        <CockpitIcon />
+      </button>
+
       {/* Sketch */}
       <button className={styles.btn} onClick={enterSketch} title="Draw route">
         <PencilIcon />
@@ -148,4 +166,6 @@ const LocateIcon  = () => <svg width="18" height="18" fill="none" stroke="curren
 const LayersIcon  = () => <svg width="18" height="18" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" viewBox="0 0 24 24"><polygon points="12 2 2 7 12 12 22 7 12 2"/><polyline points="2 17 12 22 22 17"/><polyline points="2 12 12 17 22 12"/></svg>
 const PencilIcon  = () => <svg width="18" height="18" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" viewBox="0 0 24 24"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
 const SearchIcon  = () => <svg width="18" height="18" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
+const PinIcon     = () => <svg width="18" height="18" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" viewBox="0 0 24 24"><path d="M12 21s-6-5.4-6-10a6 6 0 0 1 12 0c0 4.6-6 10-6 10z"/><circle cx="12" cy="11" r="2.5"/></svg>
+const CockpitIcon = () => <svg width="18" height="18" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" viewBox="0 0 24 24"><path d="M4 15a8 8 0 0 1 16 0"/><path d="M12 7v5"/><circle cx="12" cy="15" r="1"/><path d="M3 15h18"/></svg>
 const CompassIcon = () => <svg width="18" height="18" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><polygon points="16.24 7.76 14.12 14.12 7.76 16.24 9.88 9.88 16.24 7.76"/></svg>

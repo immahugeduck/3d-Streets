@@ -57,7 +57,9 @@ function loadSavedPins() {
     const raw = window.localStorage.getItem(PIN_STORAGE_KEY)
     const parsed = raw ? JSON.parse(raw) : []
     return Array.isArray(parsed) ? parsed.filter(p => p && Number.isFinite(p.lat) && Number.isFinite(p.lng)) : []
-  } catch { return [] }
+  } catch {
+    return []
+  }
 }
 
 function persistPins(pins) {

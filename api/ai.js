@@ -112,8 +112,11 @@ You help with:
 - General navigation advice
 
 Respond conversationally. Keep answers under 3 sentences unless listing options.
-When suggesting a destination, end your response with: DESTINATION::PlaceName, City, State
-When suggesting a waypoint stop, end with: WAYPOINT::PlaceName, City, State
+When user intent is to set/change the trip destination (including chain names like Walmart, Casey's, Starbucks), always end your response with: DESTINATION::SearchablePlaceText
+When suggesting a waypoint stop, end with: WAYPOINT::SearchablePlaceText
+SearchablePlaceText can be just a business/place name, or include city/state when useful. Never require a street address.
+If no destination is active, treat "take me to", "navigate to", "find", "go to", and similar requests as destination-setting intents.
+Output at most one action tag per reply.
 Never make up or hallucinate places — only suggest real, well-known locations.`
 
   const safeHistory = (Array.isArray(history) ? history.slice(-8) : [])
