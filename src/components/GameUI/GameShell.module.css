@@ -1,0 +1,616 @@
+.shell {
+  position: absolute;
+  inset: 0;
+  z-index: 38;
+  pointer-events: none;
+  color: #f8fbff;
+  font-family: var(--font-hud, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif);
+}
+
+.shell::before,
+.shell::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+}
+
+.shell::before {
+  background:
+    radial-gradient(circle at 50% 68%, rgba(0, 212, 255, 0.12), transparent 24%),
+    radial-gradient(circle at 50% 100%, rgba(0, 0, 0, 0.1), rgba(0, 0, 0, 0.62) 82%),
+    linear-gradient(to bottom, rgba(0, 0, 0, 0.3), transparent 28%, transparent 55%, rgba(0, 0, 0, 0.38));
+}
+
+.shell::after {
+  border: 1px solid rgba(0, 212, 255, 0.16);
+  box-shadow: inset 0 0 70px rgba(0, 0, 0, 0.58), inset 0 0 45px rgba(0, 212, 255, 0.07);
+}
+
+.scanlines {
+  position: absolute;
+  inset: 0;
+  opacity: 0.14;
+  background: repeating-linear-gradient(to bottom, rgba(255, 255, 255, 0.16) 0 1px, transparent 1px 5px);
+  mix-blend-mode: overlay;
+}
+
+.topBar {
+  position: absolute;
+  top: calc(14px + env(safe-area-inset-top));
+  left: 14px;
+  right: 14px;
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 12px;
+}
+
+.brandBlock,
+.vehicleTabs,
+.metricCard,
+.objectiveCard,
+.turnCard,
+.etaCard,
+.speedRing {
+  background: linear-gradient(145deg, rgba(5, 9, 18, 0.88), rgba(9, 18, 34, 0.72));
+  border: 1px solid rgba(0, 212, 255, 0.24);
+  box-shadow: 0 0 22px rgba(0, 212, 255, 0.08), inset 0 1px 0 rgba(255, 255, 255, 0.07);
+  backdrop-filter: blur(14px);
+}
+
+.brandBlock {
+  min-width: 132px;
+  border-radius: 16px;
+  padding: 10px 13px;
+}
+
+.brandKicker,
+.metricLabel {
+  display: block;
+  font-size: 9px;
+  line-height: 1;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: rgba(146, 232, 255, 0.78);
+}
+
+.brandBlock strong {
+  display: block;
+  margin-top: 5px;
+  font-size: 18px;
+  letter-spacing: -0.03em;
+}
+
+.vehicleTabs {
+  display: flex;
+  gap: 6px;
+  padding: 6px;
+  border-radius: 999px;
+  pointer-events: auto;
+}
+
+.vehicleTab {
+  border: 0;
+  border-radius: 999px;
+  padding: 8px 10px;
+  color: rgba(248, 251, 255, 0.86);
+  background: rgba(255, 255, 255, 0.06);
+  font-size: 12px;
+  font-weight: 800;
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  cursor: pointer;
+}
+
+.vehicleTab:first-child {
+  background: linear-gradient(135deg, rgba(0, 212, 255, 0.34), rgba(72, 99, 255, 0.26));
+  color: #ffffff;
+}
+
+.centerReticle {
+  position: absolute;
+  left: 50%;
+  top: 48%;
+  width: 82px;
+  height: 82px;
+  transform: translate(-50%, -50%);
+  border-radius: 50%;
+  border: 1px solid rgba(0, 212, 255, 0.16);
+  box-shadow: 0 0 28px rgba(0, 212, 255, 0.08);
+}
+
+.centerReticle::before,
+.centerReticle::after,
+.centerReticle span::before,
+.centerReticle span::after {
+  content: '';
+  position: absolute;
+  background: rgba(137, 232, 255, 0.48);
+}
+
+.centerReticle::before {
+  left: 50%;
+  top: -12px;
+  width: 1px;
+  height: 24px;
+}
+
+.centerReticle::after {
+  left: 50%;
+  bottom: -12px;
+  width: 1px;
+  height: 24px;
+}
+
+.centerReticle span::before {
+  top: 50%;
+  left: -12px;
+  width: 24px;
+  height: 1px;
+}
+
+.centerReticle span::after {
+  top: 50%;
+  right: -12px;
+  width: 24px;
+  height: 1px;
+}
+
+.leftStack,
+.rightStack {
+  position: absolute;
+  top: calc(104px + env(safe-area-inset-top));
+  display: grid;
+  gap: 10px;
+}
+
+.leftStack { left: 14px; }
+.rightStack { right: 14px; }
+
+.metricCard {
+  width: 104px;
+  border-radius: 14px;
+  padding: 11px 12px;
+}
+
+.metricCard strong,
+.objectiveCard strong,
+.etaCard strong,
+.turnCard strong {
+  display: block;
+  margin-top: 6px;
+  font-size: 20px;
+  letter-spacing: -0.04em;
+}
+
+.objectiveCard {
+  width: min(210px, 38vw);
+  border-radius: 16px;
+  padding: 12px 14px;
+}
+
+.objectiveCard small {
+  display: block;
+  margin-top: 6px;
+  color: rgba(218, 237, 255, 0.66);
+  font-size: 11px;
+}
+
+.bottomDock {
+  position: absolute;
+  left: 14px;
+  right: 14px;
+  bottom: calc(14px + env(safe-area-inset-bottom));
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  gap: 10px;
+  align-items: end;
+}
+
+.speedRing {
+  width: 96px;
+  height: 96px;
+  border-radius: 50%;
+  display: grid;
+  place-items: center;
+  position: relative;
+}
+
+.speedRing::before {
+  content: '';
+  position: absolute;
+  inset: 8px;
+  border-radius: 50%;
+  border: 2px solid rgba(0, 212, 255, 0.26);
+  border-top-color: rgba(255, 255, 255, 0.88);
+  border-right-color: rgba(0, 212, 255, 0.72);
+}
+
+.speedRing span {
+  font-size: 31px;
+  font-weight: 900;
+  letter-spacing: -0.08em;
+  line-height: 1;
+}
+
+.speedRing small {
+  position: absolute;
+  bottom: 25px;
+  font-size: 9px;
+  letter-spacing: 0.13em;
+  color: rgba(146, 232, 255, 0.78);
+}
+
+.turnCard {
+  min-width: 0;
+  border-radius: 18px;
+  padding: 13px 15px;
+}
+
+.turnCard p {
+  margin: 5px 0 0;
+  color: rgba(226, 240, 255, 0.72);
+  font-size: 12px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.etaCard {
+  min-width: 82px;
+  border-radius: 16px;
+  padding: 12px 14px;
+  text-align: right;
+}
+
+.navActive .centerReticle {
+  border-color: rgba(0, 212, 255, 0.34);
+  box-shadow: 0 0 34px rgba(0, 212, 255, 0.18);
+}
+
+/* ─── Windshield tint overlay ──────────────────────── */
+.windshieldTint {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 40%;
+  background: linear-gradient(to bottom, rgba(0, 8, 22, 0.52), transparent);
+  pointer-events: none;
+  z-index: 1;
+}
+
+/* ─── Vehicle profile dock ─────────────────────────── */
+.profileDock {
+  position: absolute;
+  top: calc(62px + env(safe-area-inset-top));
+  left: 50%;
+  transform: translateX(-50%);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  z-index: 10;
+  pointer-events: auto;
+}
+
+.profileDock > span {
+  font-size: 9px;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: rgba(146, 232, 255, 0.6);
+}
+
+/* ─── Vehicle tab active state ─────────────────────── */
+.vehicleTabActive {
+  background: linear-gradient(135deg, rgba(0, 212, 255, 0.34), rgba(72, 99, 255, 0.26)) !important;
+  color: #ffffff !important;
+  box-shadow: 0 0 14px rgba(0, 212, 255, 0.24);
+}
+
+/* ─── Center nav guide ─────────────────────────────── */
+.centerGuide {
+  position: absolute;
+  left: 50%;
+  top: 46%;
+  transform: translate(-50%, -50%);
+  width: 2px;
+  height: 48px;
+  z-index: 5;
+  pointer-events: none;
+}
+
+.centerGuide span {
+  display: block;
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(to bottom, transparent, rgba(0, 212, 255, 0.7), transparent);
+}
+
+/* ─── Cockpit container ────────────────────────────── */
+.cockpit {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  height: 34%;
+  z-index: 8;
+  pointer-events: none;
+}
+
+/* ─── Dashboard surface ────────────────────────────── */
+.dashSurface {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(to top, rgba(3, 7, 18, 0.97), rgba(6, 12, 26, 0.84) 60%, transparent);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-top: 1px solid rgba(0, 212, 255, 0.15);
+  box-shadow: 0 -20px 60px rgba(0, 0, 0, 0.65), inset 0 1px 0 rgba(0, 212, 255, 0.1);
+}
+
+/* ─── Instrument cluster ───────────────────────────── */
+.instrumentCluster {
+  position: absolute;
+  left: 48px;
+  top: 50%;
+  transform: translateY(-50%);
+  text-align: left;
+}
+
+.instrumentCluster strong {
+  display: block;
+  font-size: 28px;
+  font-weight: 900;
+  letter-spacing: -0.05em;
+  line-height: 1;
+  margin-top: 4px;
+}
+
+.instrumentCluster small {
+  display: block;
+  font-size: 9px;
+  letter-spacing: 0.14em;
+  color: rgba(146, 232, 255, 0.68);
+  margin-top: 2px;
+}
+
+/* ─── Steering wheel ───────────────────────────────── */
+.steeringWheel {
+  width: 110px;
+  height: 110px;
+  border-radius: 50%;
+  border: 8px solid rgba(28, 38, 58, 0.94);
+  background: radial-gradient(circle at 40% 35%, rgba(55, 70, 95, 0.8), rgba(8, 13, 26, 0.96));
+  box-shadow: 0 6px 28px rgba(0, 0, 0, 0.72), inset 0 1px 0 rgba(255, 255, 255, 0.07), 0 0 0 2px rgba(0, 212, 255, 0.1);
+  display: grid;
+  place-items: center;
+  position: relative;
+  flex-shrink: 0;
+}
+
+.steeringWheel::before,
+.steeringWheel::after {
+  content: '';
+  position: absolute;
+  background: rgba(28, 38, 56, 0.95);
+  border-radius: 2px;
+  pointer-events: none;
+}
+
+.steeringWheel::before {
+  width: 4px;
+  height: 36px;
+  top: 14%;
+  left: 50%;
+  transform: translateX(-50%);
+}
+
+.steeringWheel::after {
+  width: 36px;
+  height: 4px;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+}
+
+/* ─── Steering wheel hub ───────────────────────────── */
+.wheelHub {
+  width: 26px;
+  height: 26px;
+  border-radius: 50%;
+  background: radial-gradient(circle at 38% 34%, rgba(0, 212, 255, 0.46), rgba(0, 100, 160, 0.84));
+  box-shadow: 0 0 14px rgba(0, 212, 255, 0.5), inset 0 1px 0 rgba(255, 255, 255, 0.2);
+  position: relative;
+  z-index: 2;
+}
+
+/* ─── Center infotainment screen ───────────────────── */
+.centerScreen {
+  position: absolute;
+  right: 48px;
+  top: 50%;
+  transform: translateY(-50%);
+  text-align: right;
+  max-width: 160px;
+}
+
+.centerScreen strong {
+  display: block;
+  font-size: 22px;
+  font-weight: 900;
+  letter-spacing: -0.04em;
+  line-height: 1;
+  margin-top: 4px;
+}
+
+.centerScreen p {
+  margin: 4px 0 0;
+  font-size: 10px;
+  color: rgba(218, 237, 255, 0.6);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* ─── Speed pill ───────────────────────────────────── */
+.speedPill {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  background: linear-gradient(145deg, rgba(5, 9, 18, 0.88), rgba(9, 18, 34, 0.72));
+  border: 1px solid rgba(0, 212, 255, 0.24);
+  box-shadow: 0 0 22px rgba(0, 212, 255, 0.08), inset 0 1px 0 rgba(255, 255, 255, 0.07);
+  backdrop-filter: blur(14px);
+  border-radius: 999px;
+  width: 72px;
+  height: 72px;
+}
+
+.speedPill span {
+  font-size: 26px;
+  font-weight: 900;
+  letter-spacing: -0.06em;
+  line-height: 1;
+}
+
+.speedPill small {
+  font-size: 9px;
+  letter-spacing: 0.13em;
+  color: rgba(146, 232, 255, 0.78);
+  margin-top: 1px;
+}
+
+/* ─── View mode state modifiers ────────────────────── */
+.idleView .centerReticle {
+  opacity: 0.5;
+}
+
+.hoodOnly {}
+.fullCockpit {}
+
+/* ─── Wheel profile variants ───────────────────────── */
+.wheelSport {
+  width: 100px;
+  height: 100px;
+  border-width: 7px;
+  border-color: rgba(18, 26, 46, 0.96);
+}
+
+.wheelTruck {
+  width: 122px;
+  height: 122px;
+  border-width: 10px;
+  border-color: rgba(32, 26, 20, 0.92);
+}
+
+.wheelSuv {
+  width: 114px;
+  height: 114px;
+  border-width: 9px;
+  border-color: rgba(24, 32, 50, 0.93);
+}
+
+.wheelVan {
+  width: 118px;
+  height: 118px;
+  border-width: 8px;
+  border-color: rgba(28, 34, 46, 0.9);
+}
+
+.wheelMinimal {
+  width: 96px;
+  height: 96px;
+  border-width: 5px;
+  border-color: rgba(38, 48, 66, 0.88);
+  background: radial-gradient(circle at 40% 35%, rgba(70, 90, 120, 0.5), rgba(8, 12, 24, 0.96));
+}
+
+/* ─── Dash profile variants ────────────────────────── */
+.dashSport .dashSurface {
+  border-top-color: rgba(0, 212, 255, 0.22);
+}
+
+.dashTruck .dashSurface {
+  background: linear-gradient(to top, rgba(6, 9, 20, 0.97), rgba(12, 18, 32, 0.82) 60%, transparent);
+  border-top-color: rgba(140, 180, 220, 0.14);
+}
+
+.dashSuv .dashSurface {
+  border-top-color: rgba(0, 180, 240, 0.16);
+}
+
+.dashVan .dashSurface {
+  border-top-color: rgba(100, 160, 200, 0.12);
+}
+
+.dashMinimal .dashSurface {
+  background: linear-gradient(to top, rgba(5, 7, 14, 0.92), rgba(8, 12, 22, 0.72) 60%, transparent);
+  border-top-color: rgba(80, 140, 200, 0.1);
+  box-shadow: none;
+}
+
+@media (max-width: 720px) {
+  .vehicleTabs {
+    max-width: 52vw;
+    overflow-x: auto;
+  }
+
+  .vehicleTab {
+    font-size: 0;
+    padding: 8px 9px;
+  }
+
+  .vehicleTab span {
+    font-size: 15px;
+  }
+
+  .leftStack,
+  .rightStack {
+    top: calc(92px + env(safe-area-inset-top));
+  }
+
+  .rightStack {
+    display: none;
+  }
+
+  .metricCard {
+    width: 86px;
+    padding: 9px 10px;
+  }
+
+  .metricCard strong {
+    font-size: 16px;
+  }
+
+  .bottomDock {
+    grid-template-columns: auto minmax(0, 1fr);
+  }
+
+  .etaCard {
+    display: none;
+  }
+
+  .speedRing {
+    width: 78px;
+    height: 78px;
+  }
+
+  .speedRing span {
+    font-size: 25px;
+  }
+
+  .speedRing small {
+    bottom: 20px;
+    font-size: 8px;
+  }
+
+  .turnCard {
+    padding: 11px 12px;
+  }
+}
