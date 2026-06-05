@@ -29,7 +29,8 @@ export default function MapView() {
   const userMarkerRef       = useRef(null)
   const lastCameraUpdateRef = useRef(0)
   const hasCenteredOnUser = useRef(false)
-  const savedPinMarkersRef = useRef([])
+  const savedPinMarkersRef   = useRef([])
+  const pendingPinMarkerRef  = useRef(null)
 
   const setMapRef       = useStore(s => s.setMapRef)
   const setUserLocation = useStore(s => s.setUserLocation)
@@ -42,9 +43,12 @@ export default function MapView() {
   const phase           = useStore(s => s.phase)
   const drivingView     = useStore(s => s.drivingView)
   const cockpitMode     = useStore(s => s.cockpitMode)
-  const savedPins       = useStore(s => s.savedPins)
-  const pinDropMode     = useStore(s => s.pinDropMode)
-  const addSavedPin     = useStore(s => s.addSavedPin)
+  const savedPins        = useStore(s => s.savedPins)
+  const pinDropMode      = useStore(s => s.pinDropMode)
+  const addSavedPin      = useStore(s => s.addSavedPin)
+  const pendingPin       = useStore(s => s.pendingPin)
+  const setPendingPin    = useStore(s => s.setPendingPin)
+  const setPinDropMode   = useStore(s => s.setPinDropMode)
 
   // ── Map init ───────────────────────────────────────────────────────────
   useEffect(() => {
@@ -188,12 +192,13 @@ export default function MapView() {
     const onMapClick = (evt) => {
       if (!pinDropMode) return
       const { lng, lat } = evt.lngLat
-      addSavedPin({ lng, lat, name: `Pinned @ ${lat.toFixed(4)}, ${lng.toFixed(4)}` })
+      setPendingPin({ lng, lat, name: `${lat.toFixed(5)}, ${lng.toFixed(5)}` })
+      setPinDropMode(false)
     }
 
     map.on('click', onMapClick)
     return () => map.off('click', onMapClick)
-  }, [pinDropMode, addSavedPin])
+  }, [pinDropMode, setPendingPin, setPinDropMode])
 
   // ── Saved pin markers ─────────────────────────────────────────────────
   useEffect(() => {
@@ -216,6 +221,29 @@ export default function MapView() {
       savedPinMarkersRef.current = []
     }
   }, [savedPins])
+
+  // ── Pending drop pin marker ───────────────────────────────────────────
+  useEffect(() => {
+    const map = mapRef.current
+    pendingPinMarkerRef.current?.remove()
+    pendingPinMarkerRef.current = null
+    if (!map || !pendingPin) return
+
+    const el = document.createElement('div')
+    el.className = styles.pendingPin
+    el.innerHTML = '<span>📍</span>'
+    pendingPinMarkerRef.current = new mapboxgl.Marker({ element: el, anchor: 'bottom' })
+      .setLngLat([pendingPin.lng, pendingPin.lat])
+      .addTo(map)
+
+    map.flyTo({ center: [pendingPin.lng, pendingPin.lat], zoom: Math.max(map.getZoom(), 14), duration: 600 })
+
+    return () => {
+      pendingPinMarkerRef.current?.remove()
+      pendingPinMarkerRef.current = null
+    }
+  }, [pendingPin])
+
   // ── Camera follow during navigation ───────────────────────────────────
   useEffect(() => {
     const map = mapRef.current

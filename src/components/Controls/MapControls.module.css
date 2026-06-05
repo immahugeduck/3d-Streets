@@ -28,33 +28,6 @@
 .btn.accent { border-color: var(--accent-glow); box-shadow: 0 0 14px var(--accent-glow), 0 4px 16px rgba(0,0,0,0.5); color: var(--accent); }
 .btn.active { background: var(--accent-dim); border-color: var(--border-active); color: var(--accent); }
 
-.label3d { font-size: 13px; font-weight: 800; letter-spacing: -0.03em; }
-
-/* Style picker */
-.styleWrap { position: relative; }
-.styleMenu {
-  position: absolute;
-  right: 58px; top: 50%;
-  transform: translateY(-50%);
-  background: var(--bg-surface);
-  border: 0.5px solid var(--border-soft);
-  border-radius: var(--r-md);
-  overflow: hidden;
-  min-width: 140px;
-  box-shadow: 0 8px 32px rgba(0,0,0,0.7);
-  transform-origin: right center;
-}
-.styleOption {
-  width: 100%; display: flex; align-items: center; gap: 10px;
-  padding: 10px 14px; background: none; border: none;
-  border-bottom: 0.5px solid var(--border-subtle);
-  color: var(--text-secondary); font-family: var(--font-ui); font-size: 13px;
-  cursor: pointer; transition: background 0.12s; text-align: left;
-}
-.styleOption:last-child { border-bottom: none; }
-.styleOption:active { background: rgba(255,255,255,0.05); }
-.styleOption.styleActive { color: var(--accent); background: var(--accent-dim); }
-
 /* AI button */
 .aiBtn { border-color: rgba(0,212,255,0.35); box-shadow: 0 0 14px var(--accent-glow), 0 4px 16px rgba(0,0,0,0.5); }
 .aiOrb {
@@ -62,33 +35,22 @@
   background: var(--accent); box-shadow: 0 0 10px var(--accent-glow);
 }
 
-/* Save-route toast */
-.toast {
+/* Pin mode hint */
+.pinHint {
   position: absolute;
   right: 62px;
   top: 50%;
   transform: translateY(-50%);
   background: var(--bg-surface);
-  border: 0.5px solid var(--border-soft);
+  border: 0.5px solid var(--accent-glow);
   border-radius: var(--r-pill);
   padding: 8px 14px;
   font-family: var(--font-ui);
   font-size: 12px;
-  font-weight: 500;
-  color: var(--text-primary);
+  font-weight: 600;
+  color: var(--accent);
   white-space: nowrap;
   box-shadow: 0 4px 20px rgba(0,0,0,0.6);
   backdrop-filter: blur(12px);
-  pointer-events: none;
-}
-
-/* Compass button saved-route indicator */
-.savedDot {
-  position: absolute;
-  top: 6px; right: 6px;
-  width: 8px; height: 8px;
-  border-radius: 50%;
-  background: var(--accent);
-  box-shadow: 0 0 6px var(--accent-glow);
   pointer-events: none;
 }
