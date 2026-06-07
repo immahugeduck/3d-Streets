@@ -5,6 +5,7 @@
   background: var(--bg-void);
 }
 
+/* ── Settings panel ─────────────────────────────────── */
 .backdrop {
   position: absolute; inset: 0; z-index: 75;
   background: rgba(0,0,0,0.55);
@@ -22,9 +23,32 @@
 
 .handle { width: 36px; height: 4px; background: var(--border-soft); border-radius: 2px; margin: 10px auto 0; }
 
+/* Page dots */
+.pageDots {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 12px 0 4px;
+}
+.pageDot {
+  width: 7px; height: 7px;
+  border-radius: 50%;
+  background: var(--border-soft);
+  border: none; cursor: pointer;
+  padding: 0;
+  transition: all 0.2s;
+}
+.pageDotActive {
+  background: var(--accent);
+  box-shadow: 0 0 8px var(--accent-glow);
+  width: 20px;
+  border-radius: 4px;
+}
+
 .settingsHeader {
   display: flex; align-items: center; justify-content: space-between;
-  padding: 14px 20px 12px;
+  padding: 8px 20px 12px;
 }
 .settingsTitle { font-family: var(--font-ui); font-size: 20px; font-weight: 800; color: var(--text-primary); }
 .settingsClose { width: 32px; height: 32px; border-radius: 50%; background: var(--bg-elevated); border: 0.5px solid var(--border-subtle); color: var(--text-secondary); font-size: 12px; cursor: pointer; display: flex; align-items: center; justify-content: center; }
@@ -68,3 +92,73 @@
 .toggleOn .toggleThumb { transform: translateX(20px); background: #000; }
 
 .appVersion { font-family: var(--font-ui); font-size: 11px; color: var(--text-muted); text-align: center; padding: 16px 20px 4px; }
+
+/* ── Pin action card ─────────────────────────────────── */
+.pinCard {
+  position: absolute;
+  bottom: calc(24px + env(safe-area-inset-bottom));
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 60;
+  background: var(--bg-surface);
+  border: 0.5px solid var(--border-soft);
+  border-radius: var(--r-lg);
+  box-shadow: 0 8px 40px rgba(0,0,0,0.75), 0 0 0 0.5px var(--border-subtle);
+  backdrop-filter: blur(20px);
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 14px 16px;
+  min-width: 300px;
+  max-width: calc(100vw - 40px);
+}
+
+.pinCardIcon { font-size: 26px; flex-shrink: 0; }
+
+.pinCardInfo { flex: 1; min-width: 0; }
+.pinCardTitle { font-family: var(--font-ui); font-size: 13px; font-weight: 700; color: var(--text-primary); }
+.pinCardCoords { font-family: var(--font-ui); font-size: 11px; color: var(--text-muted); margin-top: 2px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+.pinCardActions { display: flex; gap: 8px; align-items: center; flex-shrink: 0; }
+
+.pinNavBtn {
+  background: var(--accent);
+  color: #000;
+  border: none;
+  border-radius: var(--r-pill);
+  padding: 8px 14px;
+  font-family: var(--font-ui);
+  font-size: 12px;
+  font-weight: 700;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: opacity 0.15s;
+}
+.pinNavBtn:active { opacity: 0.8; }
+
+.pinSaveBtn {
+  background: var(--bg-elevated);
+  color: var(--text-secondary);
+  border: 0.5px solid var(--border-subtle);
+  border-radius: var(--r-pill);
+  padding: 8px 12px;
+  font-family: var(--font-ui);
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: all 0.15s;
+}
+.pinSaveBtn:active { background: var(--accent-dim); }
+
+.pinDismissBtn {
+  width: 28px; height: 28px;
+  border-radius: 50%;
+  background: var(--bg-elevated);
+  border: 0.5px solid var(--border-subtle);
+  color: var(--text-muted);
+  font-size: 11px;
+  cursor: pointer;
+  display: flex; align-items: center; justify-content: center;
+  flex-shrink: 0;
+}

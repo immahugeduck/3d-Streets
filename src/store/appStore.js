@@ -222,6 +222,10 @@ const useStore = create((set, get) => ({
   openAI: () => set(s => ({ prevPhase: s.phase === PHASE.AI_CHAT ? (s.prevPhase || PHASE.IDLE) : s.phase, phase: PHASE.AI_CHAT })),
   closeAI: () => set(s => ({ phase: s.prevPhase && s.prevPhase !== PHASE.AI_CHAT ? s.prevPhase : PHASE.IDLE })),
 
+  pendingPin: null,
+  setPendingPin: (pendingPin) => set({ pendingPin }),
+  clearPendingPin: () => set({ pendingPin: null }),
+
   savedPins: loadSavedPins(),
   pinDropMode: false,
   setPinDropMode: (pinDropMode) => set({ pinDropMode: Boolean(pinDropMode) }),

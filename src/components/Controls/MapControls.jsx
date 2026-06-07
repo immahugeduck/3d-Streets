@@ -1,171 +1,59 @@
-import { useState } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
-import useStore, { MAP_STYLES, PHASE } from '../../store/appStore'
+import useStore, { PHASE } from '../../store/appStore'
 import { flyToUser } from '../Map/MapView'
 import styles from './MapControls.module.css'
 
 export default function MapControls() {
-  const [showStyles, setShowStyles] = useState(false)
-  const [saveToast, setSaveToast]   = useState('')
+  const phase          = useStore(s => s.phase)
+  const openAI         = useStore(s => s.openAI)
+  const pinDropMode    = useStore(s => s.pinDropMode)
+  const setPinDropMode = useStore(s => s.setPinDropMode)
+  const setShowSettings = useStore(s => s.setShowSettings)
 
-  const phase             = useStore(s => s.phase)
-  const mapStyle          = useStore(s => s.mapStyle)
-  const setMapStyle       = useStore(s => s.setMapStyle)
-  const is3D              = useStore(s => s.is3D)
-  const setIs3D           = useStore(s => s.setIs3D)
-  const enterSketch       = useStore(s => s.enterSketch)
-  const setShowPOI        = useStore(s => s.setShowPOI)
-  const openAI            = useStore(s => s.openAI)
-  const destination       = useStore(s => s.destination)
-  const savedRoute        = useStore(s => s.savedRoute)
-  const saveCurrentRoute  = useStore(s => s.saveCurrentRoute)
-  const restoreSavedRoute = useStore(s => s.restoreSavedRoute)
-  const clearSavedRoute   = useStore(s => s.clearSavedRoute)
-  const pinDropMode       = useStore(s => s.pinDropMode)
-  const setPinDropMode    = useStore(s => s.setPinDropMode)
-  const cockpitMode       = useStore(s => s.cockpitMode)
-  const setCockpitMode    = useStore(s => s.setCockpitMode)
-
-  // Hide during navigation/sketch
   if (phase === PHASE.NAVIGATING || phase === PHASE.SKETCHING) return null
-
-  function showToast(msg) {
-    setSaveToast(msg)
-    setTimeout(() => setSaveToast(''), 2000)
-  }
-
-  function handleCompass() {
-    if (destination) {
-      if (savedRoute && savedRoute.destination?.id === destination.id) {
-        clearSavedRoute()
-        showToast('Route unsaved')
-      } else {
-        saveCurrentRoute()
-        showToast('Route saved')
-      }
-    } else if (savedRoute) {
-      restoreSavedRoute()
-      showToast(`Restoring: ${savedRoute.destination?.name ?? 'saved route'}`)
-    } else {
-      showToast('No route to save — search a destination first')
-    }
-  }
-
-  const routeIsSaved = savedRoute &&
-    destination &&
-    savedRoute.destination?.id === destination.id
-
-  function getCompassTitle() {
-    if (routeIsSaved) return 'Route saved – tap to unsave'
-    if (destination) return 'Save this route'
-    if (savedRoute) return `Restore: ${savedRoute.destination?.name ?? 'saved route'}`
-    return 'No route to save'
-  }
 
   return (
     <div className={styles.rail}>
-      {/* Save-route toast */}
-      <AnimatePresence>
-        {saveToast && (
-          <motion.div
-            className={styles.toast}
-            initial={{ opacity: 0, x: 12 }}
-            animate={{ opacity: 1, x: 0 }}
-            exit={{ opacity: 0, x: 12 }}
-            transition={{ duration: 0.2 }}
-          >
-            {saveToast}
-          </motion.div>
-        )}
-      </AnimatePresence>
-
       {/* Locate me */}
       <button className={`${styles.btn} ${styles.accent}`} onClick={flyToUser} title="Go to my location">
         <LocateIcon />
       </button>
 
-      {/* 3D toggle */}
-      <button className={`${styles.btn} ${is3D ? styles.active : ''}`} onClick={() => setIs3D(!is3D)} title="3D / Flat">
-        <span className={styles.label3d}>{is3D ? '3D' : '2D'}</span>
-      </button>
-
-      {/* Map style picker */}
-      <div className={styles.styleWrap}>
-        <button className={styles.btn} onClick={() => setShowStyles(s => !s)} title="Map style">
-          <LayersIcon />
-        </button>
-        <AnimatePresence>
-          {showStyles && (
-            <motion.div
-              className={styles.styleMenu}
-              initial={{ opacity: 0, scale: 0.85, x: 8 }}
-              animate={{ opacity: 1, scale: 1, x: 0 }}
-              exit={{ opacity: 0, scale: 0.85, x: 8 }}
-              transition={{ duration: 0.18 }}
-            >
-              {Object.entries(MAP_STYLES).map(([key, s]) => (
-                <button
-                  key={key}
-                  className={`${styles.styleOption} ${mapStyle === key ? styles.styleActive : ''}`}
-                  onClick={() => { setMapStyle(key); setShowStyles(false) }}
-                >
-                  <span>{s.icon}</span>
-                  <span>{s.label}</span>
-                </button>
-              ))}
-            </motion.div>
-          )}
-        </AnimatePresence>
-      </div>
-
-      {/* Compass – save / restore route */}
-      <button
-        className={`${styles.btn} ${routeIsSaved ? styles.active : ''} ${!destination && savedRoute ? styles.accent : ''}`}
-        onClick={handleCompass}
-        title={getCompassTitle()}
-      >
-        <CompassIcon />
-        {savedRoute && !destination && (
-          <span className={styles.savedDot} />
+      {/* Pin drop — tap map to set destination */}
+      <AnimatePresence>
+        {pinDropMode && (
+          <motion.div
+            className={styles.pinHint}
+            initial={{ opacity: 0, x: 12 }}
+            animate={{ opacity: 1, x: 0 }}
+            exit={{ opacity: 0, x: 12 }}
+            transition={{ duration: 0.18 }}
+          >
+            Tap map to pin
+          </motion.div>
         )}
-      </button>
-
-      {/* Save pin */}
-      <button className={`${styles.btn} ${pinDropMode ? styles.active : ''}`} onClick={() => setPinDropMode(!pinDropMode)} title="Tap map to drop a saved pin">
-        <PinIcon />
-      </button>
-
-      {/* Cockpit mode */}
+      </AnimatePresence>
       <button
-        className={styles.btn}
-        onClick={() => setCockpitMode(cockpitMode === 'comfort' ? 'sport' : cockpitMode === 'sport' ? 'cinematic' : 'comfort')}
-        title={`Cockpit mode: ${cockpitMode}`}
+        className={`${styles.btn} ${pinDropMode ? styles.active : ''}`}
+        onClick={() => setPinDropMode(!pinDropMode)}
+        title="Drop a destination pin"
       >
-        <CockpitIcon />
-      </button>
-
-      {/* Sketch */}
-      <button className={styles.btn} onClick={enterSketch} title="Draw route">
-        <PencilIcon />
-      </button>
-
-      {/* POI */}
-      <button className={styles.btn} onClick={() => setShowPOI(true)} title="Search nearby">
-        <SearchIcon />
+        <PinIcon />
       </button>
 
       {/* AI co-pilot */}
       <button className={`${styles.btn} ${styles.aiBtn}`} onClick={openAI} title="AI Co-pilot">
         <span className={styles.aiOrb} />
       </button>
+
+      {/* Settings */}
+      <button className={styles.btn} onClick={() => setShowSettings(true)} title="Settings">
+        <GearIcon />
+      </button>
     </div>
   )
 }
 
-const LocateIcon  = () => <svg width="18" height="18" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M12 2v3M12 19v3M2 12h3M19 12h3"/><circle cx="12" cy="12" r="9" strokeDasharray="3 3" opacity=".4"/></svg>
-const LayersIcon  = () => <svg width="18" height="18" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" viewBox="0 0 24 24"><polygon points="12 2 2 7 12 12 22 7 12 2"/><polyline points="2 17 12 22 22 17"/><polyline points="2 12 12 17 22 12"/></svg>
-const PencilIcon  = () => <svg width="18" height="18" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" viewBox="0 0 24 24"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
-const SearchIcon  = () => <svg width="18" height="18" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
-const PinIcon     = () => <svg width="18" height="18" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" viewBox="0 0 24 24"><path d="M12 21s-6-5.4-6-10a6 6 0 0 1 12 0c0 4.6-6 10-6 10z"/><circle cx="12" cy="11" r="2.5"/></svg>
-const CockpitIcon = () => <svg width="18" height="18" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" viewBox="0 0 24 24"><path d="M4 15a8 8 0 0 1 16 0"/><path d="M12 7v5"/><circle cx="12" cy="15" r="1"/><path d="M3 15h18"/></svg>
-const CompassIcon = () => <svg width="18" height="18" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><polygon points="16.24 7.76 14.12 14.12 7.76 16.24 9.88 9.88 16.24 7.76"/></svg>
+const LocateIcon = () => <svg width="18" height="18" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M12 2v3M12 19v3M2 12h3M19 12h3"/><circle cx="12" cy="12" r="9" strokeDasharray="3 3" opacity=".4"/></svg>
+const PinIcon    = () => <svg width="18" height="18" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" viewBox="0 0 24 24"><path d="M12 21s-6-5.4-6-10a6 6 0 0 1 12 0c0 4.6-6 10-6 10z"/><circle cx="12" cy="11" r="2.5"/></svg>
+const GearIcon   = () => <svg width="18" height="18" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>

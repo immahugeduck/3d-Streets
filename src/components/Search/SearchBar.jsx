@@ -68,14 +68,13 @@ export default function SearchBar() {
   const [recent, setRecent]   = useState(loadRecent)
   const inputRef = useRef(null)
 
-  const setPhase        = useStore(s => s.setPhase)
-  const setDestination  = useStore(s => s.setDestination)
-  const openAI          = useStore(s => s.openAI)
-  const setShowSettings = useStore(s => s.setShowSettings)
-  const setShowPOI      = useStore(s => s.setShowPOI)
-  const setPoiCategory  = useStore(s => s.setPoiCategory)
-  const userLocation    = useStore(s => s.userLocation)
-  const phase           = useStore(s => s.phase)
+  const setPhase       = useStore(s => s.setPhase)
+  const setDestination = useStore(s => s.setDestination)
+  const openAI         = useStore(s => s.openAI)
+  const setShowPOI     = useStore(s => s.setShowPOI)
+  const setPoiCategory = useStore(s => s.setPoiCategory)
+  const userLocation   = useStore(s => s.userLocation)
+  const phase          = useStore(s => s.phase)
 
   const doSearch = useCallback(async (q) => {
     if (q.length < 2) { setResults([]); return }
@@ -200,9 +199,6 @@ export default function SearchBar() {
             <button className={styles.aiBtn} onClick={openAI} title="AI Co-pilot">
               <span className={styles.aiBtnOrb} />
             </button>
-            <button className={styles.menuBtn} onClick={() => setShowSettings(true)}>
-              <MenuIcon />
-            </button>
           </div>
         ) : (
           <button className={styles.cancelBtn} onClick={closeDropdown}>Cancel</button>
@@ -297,12 +293,5 @@ export default function SearchBar() {
 const SearchIcon = () => (
   <svg width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" viewBox="0 0 24 24">
     <circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/>
-  </svg>
-)
-const MenuIcon = () => (
-  <svg width="18" height="18" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" viewBox="0 0 24 24">
-    <line x1="3" y1="6" x2="21" y2="6"/>
-    <line x1="3" y1="12" x2="21" y2="12"/>
-    <line x1="3" y1="18" x2="21" y2="18"/>
   </svg>
 )
