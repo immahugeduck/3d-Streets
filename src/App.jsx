@@ -1,9 +1,10 @@
+import { useEffect } from 'react'
 import { AnimatePresence, motion } from 'framer-motion'
 import useStore, { PHASE, MAP_STYLES } from './store/appStore'
 import { useLocation } from './hooks/useLocation'
 import { useNavigationProgress } from './hooks/useNavigationProgress'
 
-import MapView            from './components/Map/MapView'
+import MapView, { startGuideAnimation, stopGuideAnimation } from './components/Map/MapView'
 import SearchBar          from './components/Search/SearchBar'
 import MapControls        from './components/Controls/MapControls'
 import NavigationHUD      from './components/Navigation/NavigationHUD'
@@ -28,6 +29,16 @@ export default function App() {
   const showRouteStops    = useStore(s => s.showRouteStops)
   const showNavSidebar    = useStore(s => s.showNavSidebar)
   const cockpitOverlayVersion = useStore(s => s.cockpitOverlayVersion)
+
+  // Start / stop the Forza-style animated road guide line with navigation
+  useEffect(() => {
+    if (phase === PHASE.NAVIGATING) {
+      startGuideAnimation()
+    } else {
+      stopGuideAnimation()
+    }
+    return () => stopGuideAnimation()
+  }, [phase])
 
   return (
     <div className={styles.app}>

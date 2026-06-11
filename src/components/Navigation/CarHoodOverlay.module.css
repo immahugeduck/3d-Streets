@@ -6,8 +6,7 @@
   right: 0;
   z-index: 45;
   pointer-events: none;
-  /* Taller so the hood fills the lower ~30% of the screen */
-  height: 240px;
+  height: 250px;
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -82,40 +81,90 @@
   width: 100%;
   height: 100%;
   display: block;
-  /* Slight glow behind the whole hood for depth */
-  filter: drop-shadow(0 -4px 24px rgba(0, 0, 0, 0.7));
+  filter: drop-shadow(0 -4px 28px rgba(0, 0, 0, 0.75));
+}
+
+/* ── Steering wheel ───────────────────────────────────────────────────── */
+.wheelWrap {
+  position: absolute;
+  bottom: 76px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 148px;
+  height: 148px;
+  z-index: 47;
+  filter:
+    drop-shadow(0 -6px 20px rgba(0, 0, 0, 0.8))
+    drop-shadow(0 0 12px rgba(0, 153, 255, 0.12));
+}
+
+.wheelSvg {
+  width: 100%;
+  height: 100%;
+  display: block;
 }
 
 /* ── Dashboard overlay ─────────────────────────────────────────────────── */
 .dashboard {
   position: absolute;
-  bottom: calc(88px + var(--safe-bottom, 0px));
+  bottom: calc(82px + var(--safe-bottom, 0px));
   left: 0;
   right: 0;
   display: flex;
   justify-content: space-between;
   align-items: flex-end;
-  padding: 0 28px;
+  padding: 0 20px;
   pointer-events: auto;
 }
 
-.speedIndicator {
+/* ── Left cluster: rev arc + speed + gear ─────────────────────────────── */
+.leftCluster {
+  display: flex;
+  align-items: flex-end;
+  gap: 6px;
+}
+
+.revArc {
+  width: 72px;
+  height: 72px;
+  flex-shrink: 0;
+  filter: drop-shadow(0 0 6px rgba(0, 153, 255, 0.25));
+}
+
+.speedBlock {
+  display: flex;
+  align-items: flex-end;
+  gap: 6px;
+}
+
+.gearBadge {
+  font-family: var(--font-hud);
+  font-size: 32px;
+  font-weight: 900;
+  color: rgba(0, 212, 255, 0.9);
+  line-height: 1;
+  letter-spacing: -0.03em;
+  text-shadow: 0 0 14px rgba(0, 212, 255, 0.5);
+  padding-bottom: 2px;
+}
+
+.speedCol {
   display: flex;
   flex-direction: column;
   align-items: center;
-  background: rgba(5, 7, 14, 0.85);
-  border: 1px solid rgba(0, 212, 255, 0.25);
+  background: rgba(5, 7, 14, 0.82);
+  border: 1px solid rgba(0, 153, 255, 0.28);
   border-radius: 10px;
-  padding: 10px 16px;
-  backdrop-filter: blur(10px);
+  padding: 8px 12px 6px;
+  backdrop-filter: blur(12px);
   box-shadow:
-    0 0 20px rgba(0, 212, 255, 0.12),
-    inset 0 1px 0 rgba(255, 255, 255, 0.06);
+    0 0 18px rgba(0, 153, 255, 0.1),
+    inset 0 1px 0 rgba(255, 255, 255, 0.05);
   position: relative;
   overflow: hidden;
 }
 
-.speedIndicatorV3::after {
+.speedColV3::after {
   content: '';
   position: absolute;
   inset: 0;
@@ -131,7 +180,7 @@
 
 .speedValue {
   font-family: var(--font-hud);
-  font-size: 32px;
+  font-size: 30px;
   font-weight: 800;
   color: var(--accent, #00d4ff);
   line-height: 1;
@@ -144,41 +193,36 @@
   font-weight: 700;
   letter-spacing: 0.12em;
   color: var(--text-muted, #6b7280);
-  margin-top: 3px;
+  margin-top: 2px;
   text-transform: uppercase;
 }
 
+/* ── View toggle ────────────────────────────────────────────────────────── */
 .viewToggle {
   width: 44px;
   height: 44px;
   border-radius: 50%;
-  background: rgba(5, 7, 14, 0.85);
+  background: rgba(5, 7, 14, 0.82);
   border: 1px solid var(--border-subtle, rgba(255, 255, 255, 0.1));
   color: var(--text-secondary, #9ca3af);
   cursor: pointer;
   display: flex;
   align-items: center;
   justify-content: center;
-  backdrop-filter: blur(10px);
+  backdrop-filter: blur(12px);
   transition: all 0.2s ease;
   box-shadow: 0 0 16px rgba(0, 0, 0, 0.5);
 }
-
 .viewToggle:hover {
-  background: rgba(0, 212, 255, 0.15);
-  border-color: rgba(0, 212, 255, 0.4);
+  background: rgba(0, 153, 255, 0.15);
+  border-color: rgba(0, 153, 255, 0.4);
   color: var(--accent, #00d4ff);
 }
+.viewToggle:active { transform: scale(0.92); }
 
-.viewToggle:active {
-  transform: scale(0.92);
-}
-
-/* ── Responsive ────────────────────────────────────────────────────────── */
+/* ── Tablet+ ────────────────────────────────────────────────────────────── */
 @media (min-width: 768px) {
-  .overlay {
-    height: 300px;
-  }
+  .overlay { height: 310px; }
 
   .windshieldPillarLeft,
   .windshieldPillarRight {
@@ -186,21 +230,19 @@
   }
 
   .dashboard {
-    bottom: calc(110px + var(--safe-bottom, 0px));
-    padding: 0 52px;
+    bottom: calc(114px + var(--safe-bottom, 0px));
+    padding: 0 48px;
   }
 
-  .speedIndicator {
-    padding: 12px 22px;
+  .wheelWrap {
+    width: 180px;
+    height: 180px;
+    bottom: 92px;
   }
 
-  .speedValue {
-    font-size: 40px;
-  }
-
-  .speedUnit {
-    font-size: 10px;
-  }
+  .speedValue { font-size: 36px; }
+  .gearBadge  { font-size: 38px; }
+  .revArc     { width: 84px; height: 84px; }
 }
 
 
