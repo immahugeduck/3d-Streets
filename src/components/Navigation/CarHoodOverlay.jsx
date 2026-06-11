@@ -189,11 +189,12 @@ function RevArc({ fraction }) {
 }
 
 // ── Main component ────────────────────────────────────────────────────────
-export default function CarHoodOverlay() {
+export default function CarHoodOverlay({ version = 'v2' }) {
   const speedMPH          = useStore(s => s.speedMPH)
   const drivingView       = useStore(s => s.drivingView)
   const toggleDrivingView = useStore(s => s.toggleDrivingView)
   const userHeading       = useStore(s => s.userHeading)
+  const isV3 = version === 'v3'
 
   const [wheelDeg, setWheelDeg] = useState(0)
   const wheelRef     = useRef(0)
@@ -234,12 +235,17 @@ export default function CarHoodOverlay() {
 
   return (
     <motion.div
-      className={styles.overlay}
+      className={`${styles.overlay} ${isV3 ? styles.overlayV3 : ''}`}
       initial={{ y: 120, opacity: 0 }}
       animate={{ y: 0, opacity: 1 }}
       exit={{ y: 120, opacity: 0 }}
       transition={{ type: 'spring', stiffness: 280, damping: 28 }}
     >
+      <div className={styles.windshieldVignette} />
+      <div className={styles.windshieldPillarLeft} />
+      <div className={styles.windshieldPillarRight} />
+      <div className={styles.windshieldGlare} />
+      {isV3 && <div className={styles.windshieldHorizonLine} />}
       {/* ── Hood body SVG ─────────────────────────────────────────── */}
       <svg
         className={styles.hood}
@@ -362,7 +368,7 @@ export default function CarHoodOverlay() {
           <RevArc fraction={rpmFrac} />
           <div className={styles.speedBlock}>
             <div className={styles.gearBadge}>{gear}</div>
-            <div className={styles.speedCol}>
+            <div className={`${styles.speedCol} ${isV3 ? styles.speedColV3 : ''}`}>
               <span className={styles.speedValue}>{Math.round(speedMPH)}</span>
               <span className={styles.speedUnit}>MPH</span>
             </div>

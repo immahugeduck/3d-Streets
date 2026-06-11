@@ -10,6 +10,9 @@ const ROUTE_COLOR        = '#0099FF'  // electric blue primary line
 const ROUTE_CASING_COLOR = '#003B6E'  // deep navy border (depth)
 const ROUTE_GLOW_COLOR   = '#00AAFF'  // brighter cyan for bloom
 const ROUTE_ALT_COLOR    = '#2A3A50'  // muted slate for alternate routes
+const MAX_DRIVING_SPEED_MPH    = 85    // cap camera look-ahead growth at highway speed
+const BASE_LOOK_AHEAD_M        = 55    // forward anchor even when near stopped
+const SPEED_LOOK_AHEAD_FACTOR  = 0.9   // extra meters of look-ahead per MPH
 
 // ── Module-level caches ───────────────────────────────────────────────────
 let _drawnRoutes      = []
@@ -64,6 +67,7 @@ export default function MapView() {
   const userMarkerRef       = useRef(null)
   const lastCameraUpdateRef = useRef(0)
   const hasCenteredOnUser = useRef(false)
+  const savedPinMarkersRef = useRef([])
 
   const setMapRef       = useStore(s => s.setMapRef)
   const setUserLocation = useStore(s => s.setUserLocation)
@@ -72,8 +76,13 @@ export default function MapView() {
   const showTraffic     = useStore(s => s.showTraffic)
   const userLocation    = useStore(s => s.userLocation)
   const userHeading     = useStore(s => s.userHeading)
+  const speedMPH        = useStore(s => s.speedMPH)
   const phase           = useStore(s => s.phase)
   const drivingView     = useStore(s => s.drivingView)
+  const cockpitMode     = useStore(s => s.cockpitMode)
+  const savedPins       = useStore(s => s.savedPins)
+  const pinDropMode     = useStore(s => s.pinDropMode)
+  const addSavedPin     = useStore(s => s.addSavedPin)
 
   // ── Map init ───────────────────────────────────────────────────────────
   useEffect(() => {
@@ -198,15 +207,53 @@ export default function MapView() {
   useEffect(() => {
     if (!userMarkerRef.current) return
     const el = userMarkerRef.current.getElement()
-    if (phase === PHASE.NAVIGATING && drivingView) {
+    if (phase === PHASE.NAVIGATING && (drivingView || is3D)) {
       el.style.opacity       = '0'
       el.style.pointerEvents = 'none'
     } else {
       el.style.opacity       = '1'
       el.style.pointerEvents = 'auto'
     }
-  }, [phase, drivingView])
+  }, [phase, drivingView, is3D])
 
+
+
+  // ── Tap-to-save map pins ──────────────────────────────────────────────
+  useEffect(() => {
+    const map = mapRef.current
+    if (!map) return
+
+    const onMapClick = (evt) => {
+      if (!pinDropMode) return
+      const { lng, lat } = evt.lngLat
+      addSavedPin({ lng, lat, name: `Pinned @ ${lat.toFixed(4)}, ${lng.toFixed(4)}` })
+    }
+
+    map.on('click', onMapClick)
+    return () => map.off('click', onMapClick)
+  }, [pinDropMode, addSavedPin])
+
+  // ── Saved pin markers ─────────────────────────────────────────────────
+  useEffect(() => {
+    const map = mapRef.current
+    if (!map) return
+
+    savedPinMarkersRef.current.forEach(marker => marker.remove())
+    savedPinMarkersRef.current = savedPins.map((pin) => {
+      const el = document.createElement('div')
+      el.className = styles.savedPin
+      el.innerHTML = '<span>📍</span>'
+      return new mapboxgl.Marker({ element: el, anchor: 'bottom' })
+        .setLngLat([pin.lng, pin.lat])
+        .setPopup(new mapboxgl.Popup({ offset: 14 }).setText(pin.name))
+        .addTo(map)
+    })
+
+    return () => {
+      savedPinMarkersRef.current.forEach(marker => marker.remove())
+      savedPinMarkersRef.current = []
+    }
+  }, [savedPins])
   // ── Camera follow during navigation ───────────────────────────────────
   useEffect(() => {
     const map = mapRef.current
@@ -221,20 +268,27 @@ export default function MapView() {
       : map.getBearing()
 
     if (drivingView) {
-      // Hood-of-car perspective: project the camera center 80 m ahead along
-      // the heading so the device position sits near the bottom of the screen.
-      const LOOK_AHEAD_M = 80
+      // Windshield perspective: lower horizon with stronger pitch and
+      // speed-aware look-ahead so motion feels like cockpit driving.
+      const clampedSpeed = Math.max(0, Math.min(speedMPH ?? 0, MAX_DRIVING_SPEED_MPH))
+      const lookAheadM = BASE_LOOK_AHEAD_M + (clampedSpeed * SPEED_LOOK_AHEAD_FACTOR)
       const bearingRad   = bearing * (Math.PI / 180)
       const latRad       = userLocation.lat * (Math.PI / 180)
-      const dLat = (LOOK_AHEAD_M * Math.cos(bearingRad)) / 111320
-      const dLng = (LOOK_AHEAD_M * Math.sin(bearingRad)) / (111320 * Math.cos(latRad))
+      const dLat = (lookAheadM * Math.cos(bearingRad)) / 111320
+      const dLng = (lookAheadM * Math.sin(bearingRad)) / (111320 * Math.cos(latRad))
+
+      const cockpitTuning = {
+        comfort: { zoom: 18.4, pitch: 72, duration: 320 },
+        sport:   { zoom: 19.2, pitch: 80, duration: 220 },
+        cinematic:{ zoom: 18.8, pitch: 76, duration: 420 },
+      }[cockpitMode] || { zoom: 19, pitch: 78, duration: 250 }
 
       map.easeTo({
         center:   [userLocation.lng + dLng, userLocation.lat + dLat],
-        zoom:     18.5,
-        pitch:    72,
+        zoom:     cockpitTuning.zoom,
+        pitch:    cockpitTuning.pitch,
         bearing,
-        duration: 250,
+        duration: cockpitTuning.duration,
       })
     } else {
       map.easeTo({
@@ -245,7 +299,7 @@ export default function MapView() {
         duration: 500,
       })
     }
-  }, [userLocation, userHeading, phase, is3D, drivingView])
+  }, [userLocation, userHeading, phase, is3D, drivingView, speedMPH, cockpitMode])
 
   return <div ref={containerRef} className={styles.mapContainer} />
 }
@@ -414,9 +468,10 @@ function _applyRouteToMap(map, geojson, isAlternate = false) {
       slot: 'top',
       paint: {
         'line-color':   ROUTE_GLOW_COLOR,
-        'line-width':   ['interpolate', ['linear'], ['zoom'], 10, 16, 16, 28],
-        'line-blur':    12,
-        'line-opacity': 0.28,
+        'line-width':   ['interpolate', ['linear'], ['zoom'], 10, 12, 16, 22],
+        'line-blur':    10,
+        'line-opacity': 0.3,
+        'line-emissive-strength': 0.75,
       },
       layout: { 'line-cap': 'round', 'line-join': 'round' },
     })
@@ -428,6 +483,7 @@ function _applyRouteToMap(map, geojson, isAlternate = false) {
         'line-color':   ROUTE_CASING_COLOR,
         'line-width':   ['interpolate', ['linear'], ['zoom'], 10, 11, 16, 16],
         'line-opacity': 0.9,
+        'line-emissive-strength': 0.2,
       },
       layout: { 'line-cap': 'round', 'line-join': 'round' },
     })
@@ -441,8 +497,9 @@ function _applyRouteToMap(map, geojson, isAlternate = false) {
       'line-color':   isAlternate ? ROUTE_ALT_COLOR : ROUTE_COLOR,
       'line-width':   isAlternate
         ? ['interpolate', ['linear'], ['zoom'], 10, 3, 16, 5]
-        : ['interpolate', ['linear'], ['zoom'], 10, 7, 16, 11],
-      'line-opacity': isAlternate ? 0.5 : 1,
+        : ['interpolate', ['linear'], ['zoom'], 10, 6, 16, 9],
+      'line-opacity': isAlternate ? 0.55 : 1,
+      'line-emissive-strength': isAlternate ? 0.1 : 0.95,
     },
     layout: { 'line-cap': 'round', 'line-join': 'round' },
   })

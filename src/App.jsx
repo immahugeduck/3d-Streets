@@ -28,6 +28,7 @@ export default function App() {
   const setShowSettings   = useStore(s => s.setShowSettings)
   const showRouteStops    = useStore(s => s.showRouteStops)
   const showNavSidebar    = useStore(s => s.showNavSidebar)
+  const cockpitOverlayVersion = useStore(s => s.cockpitOverlayVersion)
 
   // Start / stop the Forza-style animated road guide line with navigation
   useEffect(() => {
@@ -52,7 +53,7 @@ export default function App() {
       </AnimatePresence>
 
       <AnimatePresence>
-        {phase === PHASE.NAVIGATING && <CarHoodOverlay key="car-hood" />}
+        {phase === PHASE.NAVIGATING && <CarHoodOverlay key="car-hood" version={cockpitOverlayVersion} />}
       </AnimatePresence>
 
       {phase !== PHASE.NAVIGATING && phase !== PHASE.SKETCHING && (
@@ -106,6 +107,8 @@ function SettingsOverlay({ onClose }) {
   const setShowSpeedHUD = useStore(s => s.setShowSpeedHUD)
   const drivingView     = useStore(s => s.drivingView)
   const setDrivingView  = useStore(s => s.setDrivingView)
+  const cockpitOverlayVersion = useStore(s => s.cockpitOverlayVersion)
+  const setCockpitOverlayVersion = useStore(s => s.setCockpitOverlayVersion)
 
   return (
     <>
@@ -146,6 +149,13 @@ function SettingsOverlay({ onClose }) {
             <ToggleRow label="Driving View"  value={drivingView}  onChange={setDrivingView} />
             <ToggleRow label="Live Traffic"  value={showTraffic}  onChange={setShowTraffic} />
             <ToggleRow label="Speed HUD"     value={showSpeedHUD} onChange={setShowSpeedHUD} />
+            <div className={styles.toggleRow}>
+              <span className={styles.toggleLabel}>Cockpit Visual</span>
+              <div style={{ display: 'flex', gap: 8 }}>
+                <button className={`${styles.styleCard} ${cockpitOverlayVersion === 'v2' ? styles.styleCardActive : ''}`} onClick={() => setCockpitOverlayVersion('v2')}>V2</button>
+                <button className={`${styles.styleCard} ${cockpitOverlayVersion === 'v3' ? styles.styleCardActive : ''}`} onClick={() => setCockpitOverlayVersion('v3')}>V3</button>
+              </div>
+            </div>
           </div>
 
           <div className={styles.appVersion}>

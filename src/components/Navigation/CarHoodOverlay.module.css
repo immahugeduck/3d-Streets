@@ -13,6 +13,70 @@
   justify-content: flex-end;
 }
 
+.overlayV3 {
+  animation: cockpit-settle 8s ease-in-out infinite;
+}
+
+@keyframes cockpit-settle {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-2px); }
+}
+
+.windshieldVignette {
+  position: absolute;
+  inset: 0;
+  background:
+    radial-gradient(120% 70% at 50% 100%, rgba(0, 0, 0, 0) 44%, rgba(0, 0, 0, 0.38) 100%),
+    linear-gradient(to top, rgba(0, 0, 0, 0.42) 0%, rgba(0, 0, 0, 0.12) 36%, rgba(0, 0, 0, 0) 70%);
+  mix-blend-mode: normal;
+}
+
+.windshieldPillarLeft,
+.windshieldPillarRight {
+  position: absolute;
+  top: 0;
+  width: 64px;
+  height: 75%;
+  background: linear-gradient(to bottom, rgba(4, 6, 12, 0.9), rgba(4, 6, 12, 0.15));
+}
+
+.windshieldPillarLeft {
+  left: -16px;
+  transform: skewX(-14deg);
+  border-right: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.windshieldPillarRight {
+  right: -16px;
+  transform: skewX(14deg);
+  border-left: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.windshieldGlare {
+  position: absolute;
+  top: 12px;
+  left: 12%;
+  right: 12%;
+  height: 58%;
+  border-radius: 30% 30% 42% 42% / 24% 24% 46% 46%;
+  background:
+    linear-gradient(112deg, rgba(255, 255, 255, 0.1) 0%, rgba(255, 255, 255, 0.02) 30%, rgba(255, 255, 255, 0) 52%),
+    radial-gradient(100% 70% at 50% 0%, rgba(90, 210, 255, 0.14), rgba(90, 210, 255, 0));
+  opacity: 0.65;
+}
+
+.windshieldHorizonLine {
+  position: absolute;
+  top: 38%;
+  left: 10%;
+  right: 10%;
+  height: 2px;
+  border-radius: 99px;
+  background: linear-gradient(90deg, rgba(0, 0, 0, 0), rgba(130, 230, 255, 0.5), rgba(0, 0, 0, 0));
+  box-shadow: 0 0 14px rgba(120, 220, 255, 0.2);
+  opacity: 0.65;
+}
+
 .hood {
   width: 100%;
   height: 100%;
@@ -96,6 +160,22 @@
   box-shadow:
     0 0 18px rgba(0, 153, 255, 0.1),
     inset 0 1px 0 rgba(255, 255, 255, 0.05);
+  position: relative;
+  overflow: hidden;
+}
+
+.speedColV3::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: repeating-linear-gradient(
+    180deg,
+    rgba(118, 231, 255, 0.08) 0px,
+    rgba(118, 231, 255, 0.08) 1px,
+    transparent 1px,
+    transparent 4px
+  );
+  pointer-events: none;
 }
 
 .speedValue {
@@ -144,6 +224,11 @@
 @media (min-width: 768px) {
   .overlay { height: 310px; }
 
+  .windshieldPillarLeft,
+  .windshieldPillarRight {
+    width: 80px;
+  }
+
   .dashboard {
     bottom: calc(114px + var(--safe-bottom, 0px));
     padding: 0 48px;
@@ -158,4 +243,127 @@
   .speedValue { font-size: 36px; }
   .gearBadge  { font-size: 38px; }
   .revArc     { width: 84px; height: 84px; }
+}
+
+
+.cluster {
+  display: flex;
+  align-items: flex-end;
+  gap: 12px;
+}
+
+.steeringWheel {
+  width: 94px;
+  height: 94px;
+  border-radius: 50%;
+  border: 8px solid rgba(14, 18, 28, 0.95);
+  box-shadow: inset 0 0 0 2px rgba(120, 130, 150, 0.15), 0 10px 24px rgba(0, 0, 0, 0.5);
+  background: radial-gradient(circle at 50% 30%, rgba(255, 255, 255, 0.12), rgba(30, 34, 48, 0.95));
+  position: relative;
+}
+
+.steeringWheel::before,
+.steeringWheel::after {
+  content: '';
+  position: absolute;
+  background: rgba(9, 12, 20, 0.95);
+  border-radius: 20px;
+}
+
+.steeringWheel::before {
+  width: 12px;
+  height: 50px;
+  left: 50%;
+  top: 4px;
+  transform: translateX(-50%);
+}
+
+.steeringWheel::after {
+  width: 48px;
+  height: 12px;
+  left: 50%;
+  bottom: 18px;
+  transform: translateX(-50%);
+}
+
+.wheelCenter {
+  position: absolute;
+  inset: 27px;
+  border-radius: 50%;
+  background: radial-gradient(circle at 35% 25%, rgba(255, 255, 255, 0.18), rgba(20, 24, 36, 0.98));
+  border: 1px solid rgba(220, 230, 255, 0.12);
+}
+
+.navDisplay {
+  flex: 1;
+  min-width: 0;
+  margin: 0 10px;
+  background: rgba(4, 7, 12, 0.9);
+  border: 1px solid rgba(0, 212, 255, 0.25);
+  border-radius: 12px;
+  padding: 10px 12px;
+  box-shadow: 0 0 22px rgba(0, 212, 255, 0.08);
+  position: relative;
+  overflow: hidden;
+}
+
+.navDisplayV3::before {
+  content: '';
+  position: absolute;
+  top: -40%;
+  left: -20%;
+  width: 45%;
+  height: 180%;
+  background: linear-gradient(100deg, rgba(255,255,255,0), rgba(168,240,255,0.15), rgba(255,255,255,0));
+  transform: rotate(12deg);
+  animation: hud-sweep 5.2s linear infinite;
+  pointer-events: none;
+}
+
+@keyframes hud-sweep {
+  from { transform: translateX(0) rotate(12deg); }
+  to { transform: translateX(340%) rotate(12deg); }
+}
+
+.navDisplayTop { display: flex; align-items: baseline; gap: 10px; }
+.navManeuver { font-size: 26px; color: var(--accent, #00d4ff); line-height: 1; }
+.navDistance { font-size: 21px; font-weight: 800; letter-spacing: -0.01em; }
+.navInstruction {
+  margin-top: 4px;
+  font-size: 12px;
+  color: var(--text-secondary, #a6afbc);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.navMeta {
+  margin-top: 8px;
+  display: flex;
+  justify-content: space-between;
+  gap: 8px;
+  font-size: 10px;
+  letter-spacing: 0.08em;
+  color: var(--text-muted, #778091);
+  text-transform: uppercase;
+}
+.navNext { color: #89e8ff; }
+
+@media (max-width: 640px) {
+  .dashboard {
+    padding: 0 16px;
+    bottom: calc(84px + var(--safe-bottom, 0px));
+  }
+
+  .steeringWheel {
+    width: 72px;
+    height: 72px;
+    border-width: 6px;
+  }
+
+  .wheelCenter { inset: 20px; }
+
+  .speedValue { font-size: 26px; }
+  .speedIndicator { padding: 8px 12px; }
+  .navDisplay { padding: 8px 10px; }
+  .navDistance { font-size: 18px; }
 }

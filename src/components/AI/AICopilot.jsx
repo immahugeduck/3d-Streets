@@ -1,7 +1,7 @@
 import { useState, useRef, useEffect } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import useStore, { PHASE } from '../../store/appStore'
-import { sendCopilotMessage, getLastClaudeError, getLastClaudeMeta } from '../../services/anthropicService'
+import { sendCopilotMessage, getLastClaudeError, getLastClaudeMeta, parseDestination } from '../../services/anthropicService'
 import styles from './AICopilot.module.css'
 
 const QUICK_PROMPTS = [
@@ -12,6 +12,24 @@ const QUICK_PROMPTS = [
   { label: '⚡ EV charging',          text: 'Find an EV charging station nearby' },
   { label: '🏨 Hotels tonight',       text: 'Find hotels near my destination' },
 ]
+
+const TAG_DESTINATION = 'DESTINATION'
+const TAG_WAYPOINT = 'WAYPOINT'
+const DESTINATION_INTENT_RE = /\b(go to|take me to|navigate to|directions? to|route to|find|search for|locate|closest|nearest)\b/i
+const ACTION_TAG_REGEX = {
+  [TAG_DESTINATION]: /(?:^|\n)\s*DESTINATION::([^\n]+)/i,
+  [TAG_WAYPOINT]: /(?:^|\n)\s*WAYPOINT::([^\n]+)/i,
+}
+const ACTION_TAG_STRIP_REGEX = /(?:^|\n)\s*(?:DESTINATION|WAYPOINT)::[^\n]+/gi
+
+function extractActionTag(text, tag) {
+  const match = text.match(ACTION_TAG_REGEX[tag])
+  return match?.[1]?.trim() || ''
+}
+
+function stripActionTags(text) {
+  return text.replace(ACTION_TAG_STRIP_REGEX, '').trim()
+}
 
 export default function AICopilot() {
   const [input, setInput] = useState('')
@@ -81,17 +99,30 @@ export default function AICopilot() {
     }
 
     // Parse action tags
-    let cleanReply = reply
-    const destMatch = reply.match(/DESTINATION::(.+)/)
-    const wpMatch   = reply.match(/WAYPOINT::(.+)/)
+    let cleanReply = stripActionTags(reply)
+    const destTag = extractActionTag(reply, TAG_DESTINATION)
+    const wpTag   = extractActionTag(reply, TAG_WAYPOINT)
+    let resolvedDestination = null
+    let attemptedDestinationLookup = false
 
-    if (destMatch) {
-      cleanReply = reply.replace(/DESTINATION::.+/, '').trim()
-      // Trigger geocode for destination
-      handleAIDestination(destMatch[1].trim())
-    } else if (wpMatch) {
-      cleanReply = reply.replace(/WAYPOINT::.+/, '').trim()
-      handleAIWaypoint(wpMatch[1].trim())
+    if (destTag) {
+      attemptedDestinationLookup = true
+      resolvedDestination = await handleAIDestination(destTag)
+    } else if (wpTag) {
+      await handleAIWaypoint(wpTag)
+    } else if (!destination && DESTINATION_INTENT_RE.test(userText)) {
+      attemptedDestinationLookup = true
+      resolvedDestination = await handleNaturalLanguageDestination(userText)
+    }
+
+    if (!cleanReply) {
+      if (resolvedDestination) {
+        cleanReply = `Got it — heading to **${resolvedDestination.name}**.`
+      } else if (attemptedDestinationLookup) {
+        cleanReply = `I couldn't find that destination yet. Try adding a city or state.`
+      } else {
+        cleanReply = 'Got it.'
+      }
     }
 
     addMessage({ role: 'assistant', content: cleanReply })
@@ -103,13 +134,29 @@ export default function AICopilot() {
     if (results[0]) {
       setDestination(results[0])
       setPhase(PHASE.ROUTE_PREVIEW)
+      return results[0]
     }
+    return null
   }
 
   async function handleAIWaypoint(placeName) {
     const { searchPlaces } = await import('../../services/mapboxService')
     const results = await searchPlaces(placeName, userLocation)
-    if (results[0]) addWaypoint(results[0])
+    if (results[0]) {
+      addWaypoint(results[0])
+      return results[0]
+    }
+    return null
+  }
+
+  async function handleNaturalLanguageDestination(text) {
+    const parsed = await parseDestination(text, userLocation)
+    if (!parsed?.name) {
+      console.warn('[AICopilot] parseDestination returned no structured place; falling back to raw text search', { text })
+      return handleAIDestination(text)
+    }
+    const destinationQuery = parsed.address ? `${parsed.name}, ${parsed.address}` : parsed.name
+    return handleAIDestination(destinationQuery)
   }
 
   return (

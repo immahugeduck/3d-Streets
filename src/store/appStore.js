@@ -62,6 +62,27 @@ export const ROUTE_PREFS = {
   },
 }
 
+
+
+// ── Saved map pins ───────────────────────────────────────────────────────
+const PIN_STORAGE_KEY = '3d-streets.saved-pins'
+
+function loadSavedPins() {
+  if (typeof window === 'undefined') return []
+  try {
+    const raw = window.localStorage.getItem(PIN_STORAGE_KEY)
+    const parsed = raw ? JSON.parse(raw) : []
+    return Array.isArray(parsed) ? parsed.filter(p => p && Number.isFinite(p.lat) && Number.isFinite(p.lng)) : []
+  } catch {
+    return []
+  }
+}
+
+function persistPins(pins) {
+  if (typeof window === 'undefined') return
+  try { window.localStorage.setItem(PIN_STORAGE_KEY, JSON.stringify(pins)) } catch {}
+}
+
 // ── Shared nav reset helper ───────────────────────────────────────────────
 function makeNavResetPatch(phase = PHASE.IDLE) {
   return {
@@ -106,6 +127,10 @@ const useStore = create((set, get) => ({
   setMapRef:         (mapRef)      => set({ mapRef }),
   setDrivingView:    (drivingView) => set({ drivingView }),
   toggleDrivingView: ()            => set(s => ({ drivingView: !s.drivingView })),
+  cockpitMode: 'sport',
+  setCockpitMode: (cockpitMode) => set({ cockpitMode }),
+  cockpitOverlayVersion: 'v2',
+  setCockpitOverlayVersion: (cockpitOverlayVersion) => set({ cockpitOverlayVersion }),
 
   // ── User location ─────────────────────────────────────────────────────
   userLocation: null,
@@ -278,6 +303,29 @@ const useStore = create((set, get) => ({
   closeAI: () => set(s => ({
     phase: s.prevPhase && s.prevPhase !== PHASE.AI_CHAT ? s.prevPhase : PHASE.IDLE,
   })),
+
+  // ── Saved map pins ─────────────────────────────────────────────────────
+  savedPins: loadSavedPins(),
+  pinDropMode: false,
+  setPinDropMode: (pinDropMode) => set({ pinDropMode: Boolean(pinDropMode) }),
+  addSavedPin: (pin) => set(s => {
+    if (!pin || !Number.isFinite(pin.lat) || !Number.isFinite(pin.lng)) return {}
+    const safePin = {
+      id: pin.id ?? `pin-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`,
+      name: String(pin.name || `Pinned spot ${s.savedPins.length + 1}`),
+      lat: pin.lat,
+      lng: pin.lng,
+      createdAt: pin.createdAt ?? new Date().toISOString(),
+    }
+    const pins = [safePin, ...s.savedPins].slice(0, 25)
+    persistPins(pins)
+    return { savedPins: pins, pinDropMode: false }
+  }),
+  removeSavedPin: (id) => set(s => {
+    const pins = s.savedPins.filter(p => p.id !== id)
+    persistPins(pins)
+    return { savedPins: pins }
+  }),
 
   // ── Saved route (Compass bookmark) ───────────────────────────────────
   savedRoute: null,
