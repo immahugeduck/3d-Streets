@@ -1,0 +1,106 @@
+/* ── NavMinimap — Forza Motorsport 6 corner cluster ─────────────────────
+   FM6 spec: perfect circle, dark translucent fill, thin white route
+   ribbon, white heading-up triangle, orange dots for points of interest.
+   Flat — no glow, no panels-in-panels; the circle's translucency is the
+   only effect. */
+.cluster {
+  position: absolute;
+  top: calc(96px + var(--safe-top, 0px));
+  right: 12px;
+  z-index: 46;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 8px;
+  pointer-events: none;
+  animation: fade-in 0.3s ease both;
+}
+
+.mapWrap {
+  position: relative;
+  width: 168px;
+  height: 168px;
+  border-radius: 50%;
+  overflow: hidden;
+  background: rgba(10, 10, 12, 0.55);
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  backdrop-filter: blur(6px);
+  -webkit-backdrop-filter: blur(6px);
+}
+
+.canvas {
+  display: block;
+  border-radius: 50%;
+}
+
+/* ── Corner route card: next maneuver + live countdown ─────────────────── */
+.turnCard {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  max-width: 200px;
+  padding: 9px 12px;
+  border-radius: 14px;
+  background: rgba(10, 10, 12, 0.55);
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  backdrop-filter: blur(6px);
+  -webkit-backdrop-filter: blur(6px);
+  pointer-events: auto;
+  text-shadow: 0 2px 6px rgba(0, 0, 0, 0.65);
+}
+
+.turnIcon {
+  font-size: 26px;
+  line-height: 1;
+  color: #ffffff;
+  flex-shrink: 0;
+}
+
+.turnText {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.turnText strong {
+  font-family: var(--font-hud);
+  font-size: 19px;
+  font-weight: 800;
+  letter-spacing: -0.01em;
+  color: #ffffff;
+  line-height: 1.1;
+  font-variant-numeric: tabular-nums;
+}
+
+.turnText span {
+  font-size: 10.5px;
+  color: #9aa0a8;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 140px;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+}
+
+@media (min-width: 768px) {
+  .cluster {
+    top: calc(108px + var(--safe-top, 0px));
+    right: 20px;
+  }
+  .mapWrap {
+    width: 196px;
+    height: 196px;
+  }
+}
+
+@media (max-width: 380px) {
+  .mapWrap {
+    width: 140px;
+    height: 140px;
+  }
+  .turnCard {
+    max-width: 168px;
+    padding: 7px 10px;
+  }
+}

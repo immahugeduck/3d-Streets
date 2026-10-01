@@ -28,6 +28,7 @@ export default function CarHoodOverlay() {
   const speedMPH       = useStore(s => s.speedMPH)
   const drivingView    = useStore(s => s.drivingView)
   const cockpitMode    = useStore(s => s.cockpitMode)
+  const driveCam       = useStore(s => s.driveCam)
   const toggleDrivingView = useStore(s => s.toggleDrivingView)
   const routeSteps     = useStore(s => s.routeSteps)
   const currentStepIndex = useStore(s => s.currentStepIndex)
@@ -36,7 +37,10 @@ export default function CarHoodOverlay() {
   const step = routeSteps[currentStepIndex]
   const nextStep = routeSteps[currentStepIndex + 1]
 
-  if (!drivingView) return null
+  // Hood/cockpit overlay only renders in those camera modes —
+  // chase cam shows the 3D vehicle instead.
+  if (!drivingView || driveCam === 'chase') return null
+  const hoodOnly = driveCam === 'hood'
 
   return (
     <motion.div
@@ -207,12 +211,14 @@ export default function CarHoodOverlay() {
         <circle cx="400" cy="23" r="3" fill="white" opacity="0.9" />
       </svg>
 
-      {/* ── Dashboard overlay ── */}
+      {/* ── Dashboard overlay (hidden wheel in hood-only mode) ── */}
       <div className={styles.dashboard}>
         <div className={styles.cluster}>
-          <div className={styles.steeringWheel} aria-hidden="true">
-            <div className={styles.wheelCenter} />
-          </div>
+          {!hoodOnly && (
+            <div className={styles.steeringWheel} aria-hidden="true">
+              <div className={styles.wheelCenter} />
+            </div>
+          )}
 
           <div className={styles.speedIndicator}>
             <span className={styles.speedValue}>{Math.round(speedMPH)}</span>

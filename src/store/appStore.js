@@ -101,7 +101,9 @@ const useStore = create((set, get) => ({
   mapRef: null,
   drivingView: true,
   cockpitMode: 'sport',
-  cockpitView: 'cockpit',
+  // Drive camera: 'chase' = behind-vehicle POV (main nav view),
+  // 'cockpit' = in-car dash view, 'hood' = hood-only view.
+  driveCam: 'chase',
   setMapStyle: (mapStyle) => set({ mapStyle }),
   setIs3D: (is3D) => set({ is3D }),
   setShowTraffic: (showTraffic) => set({ showTraffic }),
@@ -109,7 +111,9 @@ const useStore = create((set, get) => ({
   setDrivingView: (drivingView) => set({ drivingView }),
   toggleDrivingView: () => set(s => ({ drivingView: !s.drivingView })),
   setCockpitMode: (cockpitMode) => set({ cockpitMode }),
-  setCockpitView: (cockpitView) => set({ cockpitView }),
+  setDriveCam: (driveCam) => set({
+    driveCam: ['chase', 'cockpit', 'hood'].includes(driveCam) ? driveCam : 'chase',
+  }),
 
   userLocation: null,
   userHeading: null,

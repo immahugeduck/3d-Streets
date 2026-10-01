@@ -1,6 +1,13 @@
 import { useEffect, useRef } from 'react'
 import mapboxgl from 'mapbox-gl'
 import useStore, { MAP_STYLES, PHASE } from '../../store/appStore'
+import { chaseCamTarget, resetChaseCam } from '../Navigation/chaseCamera'
+import {
+  addChaseVehicleLayer,
+  removeChaseVehicleLayer,
+  updateChaseVehiclePose,
+  setChaseVehicleProfile,
+} from '../Navigation/ChaseVehicleLayer'
 import styles from './MapView.module.css'
 
 mapboxgl.accessToken = import.meta.env.VITE_MAPBOX_TOKEN || ''
@@ -43,6 +50,7 @@ export default function MapView() {
   const phase           = useStore(s => s.phase)
   const drivingView     = useStore(s => s.drivingView)
   const cockpitMode     = useStore(s => s.cockpitMode)
+  const driveCam        = useStore(s => s.driveCam)
   const savedPins        = useStore(s => s.savedPins)
   const pinDropMode      = useStore(s => s.pinDropMode)
   const addSavedPin      = useStore(s => s.addSavedPin)
@@ -169,18 +177,53 @@ export default function MapView() {
     }
   }, [userLocation, userHeading])
 
-  // ── Hide puck in driving view (hood IS the location indicator) ────────
+  // ── Hide puck in driving view (3D car / hood IS the location indicator)
   useEffect(() => {
     if (!userMarkerRef.current) return
     const el = userMarkerRef.current.getElement()
-    if (phase === PHASE.NAVIGATING && (drivingView || is3D)) {
+    if (phase === PHASE.NAVIGATING && drivingView) {
       el.style.opacity       = '0'
       el.style.pointerEvents = 'none'
     } else {
       el.style.opacity       = '1'
       el.style.pointerEvents = 'auto'
     }
-  }, [phase, drivingView, is3D])
+  }, [phase, drivingView])
+
+  // ── Chase vehicle 3D overlay lifecycle ─────────────────────────────────
+  const chaseActive = phase === PHASE.NAVIGATING && drivingView && driveCam === 'chase'
+
+  useEffect(() => {
+    const map = mapRef.current
+    if (!map) return
+    if (!chaseActive || !userLocation) {
+      removeChaseVehicleLayer(map)
+      return
+    }
+    const ensure = () => {
+      setChaseVehicleProfile(cockpitMode)
+      addChaseVehicleLayer(map)
+    }
+    if (map.isStyleLoaded()) ensure()
+    else map.once('style.load', ensure)
+    return () => removeChaseVehicleLayer(map)
+  }, [chaseActive, cockpitMode]) // eslint-disable-line react-hooks/exhaustive-deps
+
+  // ── Keep the 3D car glued to GPS ──────────────────────────────────────
+  useEffect(() => {
+    if (!chaseActive || !userLocation) return
+    updateChaseVehiclePose({
+      lng: userLocation.lng,
+      lat: userLocation.lat,
+      heading: userHeading,
+    })
+  }, [chaseActive, userLocation, userHeading])
+
+  // Reset chase-cam smoothing whenever the chase view (re)engages so the
+  // camera doesn't sweep in from a stale bearing.
+  useEffect(() => {
+    if (chaseActive) resetChaseCam()
+  }, [chaseActive])
 
 
 
@@ -258,6 +301,21 @@ export default function MapView() {
       : map.getBearing()
 
     if (drivingView) {
+      if (driveCam === 'chase') {
+        // ── Behind-vehicle chase cam (main nav POV) ─────────────────────
+        // Bearing lags the GPS heading for game-style sway; the camera
+        // sits behind/above the 3D car with the road ahead in frame.
+        const target = chaseCamTarget({
+          lng: userLocation.lng,
+          lat: userLocation.lat,
+          heading: (userHeading !== null && userHeading !== undefined)
+            ? userHeading
+            : map.getBearing(),
+          speedMPH,
+          profile: cockpitMode,
+        })
+        map.easeTo(target)
+      } else {
       // Windshield perspective: lower horizon with stronger pitch and
       // speed-aware look-ahead so motion feels like cockpit driving.
       const clampedSpeed = Math.max(0, Math.min(speedMPH ?? 0, MAX_DRIVING_SPEED_MPH))
@@ -280,6 +338,7 @@ export default function MapView() {
         bearing,
         duration: cockpitTuning.duration,
       })
+      } // end cockpit/hood windshield branch
     } else {
       map.easeTo({
         center:   [userLocation.lng, userLocation.lat],
@@ -289,7 +348,10 @@ export default function MapView() {
         duration: 500,
       })
     }
-  }, [userLocation, userHeading, phase, is3D, drivingView, speedMPH, cockpitMode])
+
+    // Forza suggested line: color the stretch ahead blue/red by maneuver.
+    if (phase === PHASE.NAVIGATING) updateRouteSeverity()
+  }, [userLocation, userHeading, phase, is3D, drivingView, driveCam, speedMPH, cockpitMode])
 
   return <div ref={containerRef} className={styles.mapContainer} />
 }
@@ -504,10 +566,93 @@ export function clearRoute() {
     'route-glow',  'route-casing',
     'route-main',  'route-alt',
     'sketch-layer', 'sketch-source',
+    'route-severity', 'route-severity-src',
   ].forEach(id => {
     if (map.getLayer(id))   map.removeLayer(id)
     if (map.getSource(id)) map.removeSource(id)
   })
+}
+
+// ── Forza suggested driving line ─────────────────────────────────────────
+// Colors the upcoming stretch of the current step like Forza's suggested
+// line: blue (#2E9BFF) = accelerate/keep going, red (#FF2A1A) = brake
+// ahead (sharp turn, uturn, roundabout, arrival). Updated at nav tick rate.
+const SEVERITY_SRC = 'route-severity-src'
+const SEVERITY_LYR = 'route-severity'
+const SUGGEST_BLUE = '#2E9BFF'
+const SUGGEST_RED  = '#FF2A1A'
+
+function _suggestColor(step) {
+  if (!step) return SUGGEST_BLUE
+  const mod  = String(step.modifier || '').toLowerCase()
+  const type = String(step.maneuver || '').toLowerCase()
+  const brake =
+    mod.includes('sharp') || mod.includes('uturn') ||
+    ['roundabout', 'rotary', 'arrive', 'exit roundabout', 'exit rotary'].includes(type)
+  return brake ? SUGGEST_RED : SUGGEST_BLUE
+}
+
+function _nearestCoordIdx(coords, lng, lat) {
+  let bi = 0, bd = Infinity
+  for (let i = 0; i < coords.length; i += 4) {
+    const dx = coords[i][0] - lng, dy = coords[i][1] - lat
+    const d = dx * dx + dy * dy
+    if (d < bd) { bd = d; bi = i }
+  }
+  for (let i = Math.max(0, bi - 4); i < Math.min(coords.length, bi + 5); i++) {
+    const dx = coords[i][0] - lng, dy = coords[i][1] - lat
+    const d = dx * dx + dy * dy
+    if (d < bd) { bd = d; bi = i }
+  }
+  return bi
+}
+
+export function updateRouteSeverity() {
+  const map = window._3dstreetsMap
+  if (!map || !map.getLayer('route-layer')) return
+  const st = useStore.getState()
+  const coords = st.selectedRoute?.geometry?.coordinates
+  const loc = st.userLocation
+
+  if (st.phase !== PHASE.NAVIGATING || !loc || !Array.isArray(coords) || coords.length < 2) {
+    if (map.getSource(SEVERITY_SRC)) {
+      map.getSource(SEVERITY_SRC).setData({ type: 'FeatureCollection', features: [] })
+    }
+    return
+  }
+
+  if (!map.getSource(SEVERITY_SRC)) {
+    map.addSource(SEVERITY_SRC, {
+      type: 'geojson',
+      data: { type: 'FeatureCollection', features: [] },
+    })
+    map.addLayer({
+      id: SEVERITY_LYR, type: 'line', source: SEVERITY_SRC, slot: 'top',
+      paint: {
+        'line-color': SUGGEST_BLUE,
+        'line-width': ['interpolate', ['linear'], ['zoom'], 10, 7, 16, 10],
+        'line-opacity': 0.95,
+      },
+      layout: { 'line-cap': 'round', 'line-join': 'round' },
+    })
+  }
+
+  const next = st.routeSteps?.[st.currentStepIndex + 1]
+  const a = _nearestCoordIdx(coords, loc.lng, loc.lat)
+  let b = Math.min(coords.length - 1, a + 60)
+  if (next?.location) {
+    const mb = _nearestCoordIdx(coords, next.location[0], next.location[1])
+    b = Math.max(a + 2, mb + 1)
+  }
+  const seg = coords.slice(a, b)
+  seg[0] = [loc.lng, loc.lat] // start exactly at the car
+
+  map.getSource(SEVERITY_SRC).setData({
+    type: 'Feature',
+    geometry: { type: 'LineString', coordinates: seg },
+    properties: {},
+  })
+  map.setPaintProperty(SEVERITY_LYR, 'line-color', _suggestColor(next))
 }
 
 export function fitRoute(coordinates, bottomPad = 320) {

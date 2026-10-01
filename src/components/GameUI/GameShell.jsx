@@ -19,7 +19,7 @@ function getSteeringAngle(heading) {
 export default function GameShell() {
   const cockpitMode = useStore(s => s.cockpitMode)
   const setCockpitMode = useStore(s => s.setCockpitMode)
-  const cockpitView = useStore(s => s.cockpitView)
+  const driveCam = useStore(s => s.driveCam)
   const phase = useStore(s => s.phase)
   const speedMPH = useStore(s => s.speedMPH)
   const eta = useStore(s => s.eta)
@@ -36,9 +36,11 @@ export default function GameShell() {
   const activeStep = routeSteps[currentStepIndex]
   const navActive = phase === PHASE.NAVIGATING
   const steeringAngle = getSteeringAngle(userHeading)
-  const isHoodOnly = cockpitView === 'hood'
+  const isHoodOnly = driveCam === 'hood'
 
   if (!drivingView) return null
+  // Chase cam carries its own 3D vehicle — no cockpit shell needed.
+  if (navActive && driveCam === 'chase') return null
 
   return (
     <motion.div

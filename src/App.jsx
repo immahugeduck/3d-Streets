@@ -9,6 +9,8 @@ import SearchBar          from './components/Search/SearchBar'
 import MapControls        from './components/Controls/MapControls'
 import NavigationHUD      from './components/Navigation/NavigationHUD'
 import CarHoodOverlay     from './components/Navigation/CarHoodOverlay'
+import NavMinimap         from './components/Navigation/NavMinimap'
+import SpeedFXOverlay     from './components/Navigation/SpeedFXOverlay'
 import GameShell          from './components/GameUI/GameShell'
 import VehicleEntryOverlay from './components/Navigation/VehicleEntryOverlay'
 import RoutePreviewPanel  from './components/Navigation/RoutePreviewPanel'
@@ -25,6 +27,8 @@ export default function App() {
   useNavigationProgress()
 
   const phase           = useStore(s => s.phase)
+  const drivingView     = useStore(s => s.drivingView)
+  const driveCam        = useStore(s => s.driveCam)
   const showPOI         = useStore(s => s.showPOI)
   const showSettings    = useStore(s => s.showSettings)
   const setShowSettings = useStore(s => s.setShowSettings)
@@ -52,6 +56,17 @@ export default function App() {
 
       <AnimatePresence>
         {phase === PHASE.NAVIGATING && <CarHoodOverlay key="car-hood" />}
+      </AnimatePresence>
+
+      {/* Forza-style speed FX in every driving camera */}
+      {phase === PHASE.NAVIGATING && drivingView && <SpeedFXOverlay key="speed-fx" />}
+
+      {/* Corner minimap + route card in cockpit/hood views (chase cam
+          already shows the full route on the main map) */}
+      <AnimatePresence>
+        {phase === PHASE.NAVIGATING && drivingView && driveCam !== 'chase' && (
+          <NavMinimap key="nav-minimap" />
+        )}
       </AnimatePresence>
 
       {phase !== PHASE.NAVIGATING && phase !== PHASE.SKETCHING && (
@@ -151,8 +166,9 @@ const COCKPIT_MODES = [
 ]
 
 const VIEW_MODES = [
-  { key: 'cockpit', label: 'Cockpit', icon: '◒' },
-  { key: 'hood',    label: 'Hood',    icon: '━' },
+  { key: 'chase',   label: 'Chase',   icon: 'CH' },
+  { key: 'cockpit', label: 'Cockpit', icon: 'CK' },
+  { key: 'hood',    label: 'Hood',    icon: 'HD' },
 ]
 
 function SettingsOverlay({ onClose }) {
@@ -166,8 +182,8 @@ function SettingsOverlay({ onClose }) {
   const setShowTraffic = useStore(s => s.setShowTraffic)
   const drivingView    = useStore(s => s.drivingView)
   const setDrivingView = useStore(s => s.setDrivingView)
-  const cockpitView    = useStore(s => s.cockpitView)
-  const setCockpitView = useStore(s => s.setCockpitView)
+  const driveCam       = useStore(s => s.driveCam)
+  const setDriveCam    = useStore(s => s.setDriveCam)
   const cockpitMode    = useStore(s => s.cockpitMode)
   const setCockpitMode = useStore(s => s.setCockpitMode)
 
@@ -244,10 +260,10 @@ function SettingsOverlay({ onClose }) {
               transition={{ duration: 0.18 }}
             >
               <div className={styles.section}>
-                <div className={styles.sectionLabel}>DRIVE VIEW</div>
+                <div className={styles.sectionLabel}>DRIVE CAMERA</div>
                 <div className={styles.styleGrid}>
                   {VIEW_MODES.map(v => (
-                    <button key={v.key} className={`${styles.styleCard} ${cockpitView === v.key ? styles.styleCardActive : ''}`} onClick={() => setCockpitView(v.key)}>
+                    <button key={v.key} className={`${styles.styleCard} ${driveCam === v.key ? styles.styleCardActive : ''}`} onClick={() => setDriveCam(v.key)}>
                       <span className={styles.styleCardIcon}>{v.icon}</span>
                       <span className={styles.styleCardLabel}>{v.label}</span>
                     </button>
