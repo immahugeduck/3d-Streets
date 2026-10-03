@@ -1,46 +1,118 @@
 import { motion } from 'framer-motion'
+import { useSteeringAngle } from '../../hooks/useSteeringAngle'
 import useStore from '../../store/appStore'
 import styles from './CarHoodOverlay.module.css'
 
-const MANEUVER_ICONS = {
-  'turn-left': '↰',
-  'turn-right': '↱',
-  'turn-slight-left': '↖',
-  'turn-slight-right': '↗',
-  'turn-sharp-left': '⬐',
-  'turn-sharp-right': '⬏',
-  uturn: '↩',
-  roundabout: '↻',
-  merge: '⤵',
-  arrive: '📍',
-  depart: '🚀',
-  straight: '↑',
-  default: '↑',
+// ── Forza-style 3-spoke steering wheel. Rotates with steering input. ─────
+function SteeringWheel({ angle }) {
+  return (
+    <svg className={styles.wheelSvg} viewBox="0 0 140 140" aria-hidden="true">
+      <g transform={`rotate(${angle.toFixed(1)} 70 70)`}>
+        {/* Leather rim */}
+        <circle cx="70" cy="70" r="61" fill="none" stroke="#14171e" strokeWidth="14" />
+        <circle cx="70" cy="70" r="61" fill="none" stroke="rgba(255,255,255,0.09)" strokeWidth="2.5"
+          strokeDasharray="200 183" strokeLinecap="round" transform="rotate(-100 70 70)" />
+        {/* 12-o'clock marker */}
+        <rect x="66" y="2" width="8" height="10" rx="2" fill="#00d4ff" opacity="0.85" />
+        {/* Spokes: bottom, left, right */}
+        {[0, 90, 270].map(a => (
+          <g key={a} transform={`rotate(${a} 70 70)`}>
+            <rect x="63" y="66" width="14" height="50" rx="7" fill="#14171e" />
+            <rect x="63" y="66" width="14" height="50" rx="7" fill="none"
+              stroke="rgba(255,255,255,0.07)" strokeWidth="1" />
+          </g>
+        ))}
+        {/* Hub */}
+        <rect x="50" y="50" width="40" height="40" rx="11" fill="#1d212b"
+          stroke="rgba(255,255,255,0.12)" strokeWidth="1" />
+        <circle cx="70" cy="70" r="9" fill="#0b2a4a" stroke="rgba(0,212,255,0.5)" strokeWidth="1.5" />
+        <circle cx="70" cy="70" r="3" fill="#00d4ff" />
+      </g>
+    </svg>
+  )
 }
 
-function getManeuverIcon(type, modifier) {
-  if (!type) return '↑'
-  const key = modifier ? `${type}-${modifier}`.replace(/ /g, '-') : type
-  return MANEUVER_ICONS[key] ?? MANEUVER_ICONS[type] ?? MANEUVER_ICONS.default
+// ── Forza-style gauge cluster: tach arc with redline, live needle,
+//    digital speed + gear. ────────────────────────────────────────────────
+function Tachometer({ speedMPH }) {
+  const cx = 110, cy = 112, r = 82, maxV = 120
+  const a0 = -120, a1 = 120
+  const pt = (deg, rad) => {
+    const a = (deg * Math.PI) / 180
+    return [cx + rad * Math.sin(a), cy - rad * Math.cos(a)]
+  }
+  const arc = (from, to, rad) => {
+    const [x0, y0] = pt(from, rad)
+    const [x1, y1] = pt(to, rad)
+    return `M ${x0.toFixed(1)} ${y0.toFixed(1)} A ${rad} ${rad} 0 1 1 ${x1.toFixed(1)} ${y1.toFixed(1)}`
+  }
+  const ticks = []
+  for (let v = 0; v <= maxV; v += 10) {
+    const deg = a0 + (v / maxV) * (a1 - a0)
+    const major = v % 20 === 0
+    const [x0, y0] = pt(deg, r - (major ? 13 : 7))
+    const [x1, y1] = pt(deg, r)
+    ticks.push(
+      <line key={v} x1={x0} y1={y0} x2={x1} y2={y1}
+        stroke={v >= 100 ? '#ff2a1a' : 'rgba(255,255,255,0.5)'}
+        strokeWidth={major ? 2.5 : 1.5} />
+    )
+    if (v % 40 === 0) {
+      const [tx, ty] = pt(deg, r - 25)
+      ticks.push(
+        <text key={`l${v}`} x={tx} y={ty} textAnchor="middle" dominantBaseline="central"
+          fill="rgba(255,255,255,0.62)" fontSize="12"
+          fontFamily="'Barlow Condensed', sans-serif" fontWeight="700">{v}</text>
+      )
+    }
+  }
+  const clamped = Math.min(Math.max(speedMPH || 0, 0), maxV)
+  const nDeg = a0 + (clamped / maxV) * (a1 - a0)
+  const [nx, ny] = pt(nDeg, r - 16)
+
+  return (
+    <svg className={styles.tachSvg} viewBox="0 0 220 132" aria-hidden="true">
+      {/* Dial arcs */}
+      <path d={arc(a0, a1, r)} fill="none" stroke="rgba(255,255,255,0.14)" strokeWidth="9" strokeLinecap="round" />
+      <path d={arc(84, 120, r)} fill="none" stroke="#ff2a1a" strokeWidth="9" strokeLinecap="round" opacity="0.9" />
+      {ticks}
+      {/* Needle */}
+      <line x1={cx} y1={cy} x2={nx} y2={ny} stroke="#ff3b30" strokeWidth="3.5" strokeLinecap="round" />
+      <circle cx={cx} cy={cy} r="7" fill="#1d212b" stroke="rgba(255,255,255,0.25)" strokeWidth="1.5" />
+      {/* Digital readout */}
+      <text x={cx} y={cy - 34} textAnchor="middle" fill="#ffffff"
+        fontSize="34" fontWeight="800" fontFamily="'Barlow Condensed', sans-serif"
+        style={{ fontVariantNumeric: 'tabular-nums' }}>
+        {Math.round(speedMPH || 0)}
+      </text>
+      <text x={cx} y={cy - 18} textAnchor="middle" fill="rgba(255,255,255,0.5)"
+        fontSize="10" fontFamily="'Barlow Condensed', sans-serif" letterSpacing="2">MPH</text>
+      {/* Gear indicator */}
+      <rect x={cx - 13} y={cy + 8} width="26" height="20" rx="5" fill="rgba(0,212,255,0.12)"
+        stroke="rgba(0,212,255,0.45)" strokeWidth="1" />
+      <text x={cx} y={cy + 23} textAnchor="middle" fill="#7fe7ff" fontSize="14" fontWeight="800"
+        fontFamily="'Barlow Condensed', sans-serif">D</text>
+    </svg>
+  )
 }
 
 export default function CarHoodOverlay() {
   const speedMPH       = useStore(s => s.speedMPH)
   const drivingView    = useStore(s => s.drivingView)
-  const cockpitMode    = useStore(s => s.cockpitMode)
+  const driveCam       = useStore(s => s.driveCam)
   const toggleDrivingView = useStore(s => s.toggleDrivingView)
-  const routeSteps     = useStore(s => s.routeSteps)
-  const currentStepIndex = useStore(s => s.currentStepIndex)
-  const remainingDist  = useStore(s => s.remainingDist)
 
-  const step = routeSteps[currentStepIndex]
-  const nextStep = routeSteps[currentStepIndex + 1]
+  // Steering angle from heading deltas — smoothed, clamped like a wheel.
+  const steering = useSteeringAngle()
 
-  if (!drivingView) return null
+  // Hood/cockpit overlay only renders in those camera modes —
+  // chase cam shows the 3D vehicle instead.
+  if (!drivingView || driveCam === 'chase') return null
+  const hoodOnly = driveCam === 'hood'
 
   return (
     <motion.div
-      className={`${styles.overlay} ${styles[`mode-${cockpitMode}`] || ''}`}
+      className={styles.overlay}
       initial={{ y: 120, opacity: 0 }}
       animate={{ y: 0, opacity: 1 }}
       exit={{ y: 120, opacity: 0 }}
@@ -207,28 +279,12 @@ export default function CarHoodOverlay() {
         <circle cx="400" cy="23" r="3" fill="white" opacity="0.9" />
       </svg>
 
-      {/* ── Dashboard overlay ── */}
+      {/* ── Forza-style dashboard: wheel + working gauges ── */}
       <div className={styles.dashboard}>
         <div className={styles.cluster}>
-          <div className={styles.steeringWheel} aria-hidden="true">
-            <div className={styles.wheelCenter} />
-          </div>
-
-          <div className={styles.speedIndicator}>
-            <span className={styles.speedValue}>{Math.round(speedMPH)}</span>
-            <span className={styles.speedUnit}>MPH</span>
-          </div>
-        </div>
-
-        <div className={styles.navDisplay}>
-          <div className={styles.navDisplayTop}>
-            <span className={styles.navManeuver}>{getManeuverIcon(step?.maneuver, step?.modifier)}</span>
-            <span className={styles.navDistance}>{step?.distanceLabel ?? '—'}</span>
-          </div>
-          <div className={styles.navInstruction}>{step?.instruction ?? 'Continue on current road'}</div>
-          <div className={styles.navMeta}>
-            <span className={styles.navNext}>NEXT {getManeuverIcon(nextStep?.maneuver, nextStep?.modifier)}</span>
-            <span>{remainingDist || '—'} left</span>
+          {!hoodOnly && <SteeringWheel angle={steering} />}
+          <div className={styles.gaugeCluster}>
+            <Tachometer speedMPH={speedMPH} />
           </div>
         </div>
 

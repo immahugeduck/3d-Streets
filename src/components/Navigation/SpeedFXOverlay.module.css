@@ -1,0 +1,44 @@
+/* ── SpeedFXOverlay — Forza speed sensation (streaks only, no vignette) ── */
+.fx {
+  position: absolute;
+  inset: 0;
+  z-index: 44; /* above the map, below HUD chrome */
+  pointer-events: none;
+  overflow: hidden;
+}
+
+/* Faint horizontal streaks sweeping past at the frame edges */
+.streaks {
+  position: absolute;
+  inset: -20%;
+  opacity: calc(var(--fx, 0) * 0.35);
+  background: repeating-linear-gradient(
+    to bottom,
+    transparent 0px,
+    transparent 46px,
+    rgba(180, 210, 235, 0.05) 46px,
+    rgba(180, 210, 235, 0.05) 48px,
+    transparent 48px,
+    transparent 120px
+  );
+  animation: streak-drift 0.55s linear infinite;
+  mask-image: linear-gradient(
+    to right,
+    black 0%, transparent 22%,
+    transparent 78%, black 100%
+  );
+  -webkit-mask-image: linear-gradient(
+    to right,
+    black 0%, transparent 22%,
+    transparent 78%, black 100%
+  );
+}
+
+@keyframes streak-drift {
+  from { transform: translateY(-60px); }
+  to   { transform: translateY(60px); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .streaks { animation: none; }
+}

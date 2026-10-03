@@ -122,27 +122,7 @@ export async function parseDestination(query, userLocation) {
   }
 }
 
-// ── 3. Sketch Route Interpretation ───────────────────────────────────────
-export async function interpretSketch({ startCoord, endCoord, pointCount, corridorMiles }) {
-  return callProxy('interpretSketch', { startCoord, endCoord, pointCount, corridorMiles })
-}
-
-// ── 4. POI Query Refinement ───────────────────────────────────────────────
-export async function refinePOISearch(userQuery, currentContext) {
-  const text = await callProxy('refinePOI', { userQuery, context: currentContext })
-  try {
-    return JSON.parse(text?.replace(/```json|```/g, '').trim())
-  } catch {
-    return null
-  }
-}
-
-// ── 5. Trip Summary ───────────────────────────────────────────────────────
+// ── 3. Trip Summary ───────────────────────────────────────────────────────
 export async function generateTripSummary({ distance, duration, destination }) {
   return callProxy('tripSummary', { distance, duration, destination })
-}
-
-// ── 6. Smart Route Suggestions ────────────────────────────────────────────
-export async function getRouteSuggestions({ origin, destination, preferences }) {
-  return callProxy('routeSuggestions', { origin, destination, preferences })
 }

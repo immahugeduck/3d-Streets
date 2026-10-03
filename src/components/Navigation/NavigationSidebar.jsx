@@ -1,24 +1,7 @@
 import { motion, AnimatePresence } from 'framer-motion'
+import { getManeuverIcon } from '../../utils/maneuvers'
 import useStore from '../../store/appStore'
 import styles from './NavigationSidebar.module.css'
-
-const MANEUVER_ICONS = {
-  'turn-left':         '↰',
-  'turn-right':        '↱',
-  'turn-slight-left':  '↖',
-  'turn-slight-right': '↗',
-  'uturn':             '↩',
-  'roundabout':        '↻',
-  'arrive':            '📍',
-  'depart':            '🚀',
-  'straight':          '↑',
-}
-
-function getManeuverIcon(type, modifier) {
-  if (!type) return '↑'
-  const key = modifier ? `${type}-${modifier}`.replace(/ /g, '-') : type
-  return MANEUVER_ICONS[key] ?? MANEUVER_ICONS[type] ?? '↑'
-}
 
 export default function NavigationSidebar() {
   const setShowNavSidebar = useStore(s => s.setShowNavSidebar)

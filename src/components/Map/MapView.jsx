@@ -1,6 +1,13 @@
 import { useEffect, useRef } from 'react'
 import mapboxgl from 'mapbox-gl'
 import useStore, { MAP_STYLES, PHASE } from '../../store/appStore'
+import { chaseCamTarget, resetChaseCam } from '../Navigation/chaseCamera'
+import {
+  addChaseVehicleLayer,
+  removeChaseVehicleLayer,
+  updateChaseVehiclePose,
+  setChaseVehicleProfile,
+} from '../Navigation/ChaseVehicleLayer'
 import styles from './MapView.module.css'
 
 mapboxgl.accessToken = import.meta.env.VITE_MAPBOX_TOKEN || ''
@@ -16,11 +23,6 @@ const SPEED_LOOK_AHEAD_FACTOR  = 0.9   // extra meters of look-ahead per MPH
 
 // ── Module-level caches ───────────────────────────────────────────────────
 let _drawnRoutes      = []
-let _routeCoordinates = []
-
-export function setRouteGeometry(coords) {
-  _routeCoordinates = Array.isArray(coords) ? coords : []
-}
 
 // ── Component ─────────────────────────────────────────────────────────────
 export default function MapView() {
@@ -33,7 +35,6 @@ export default function MapView() {
   const pendingPinMarkerRef  = useRef(null)
 
   const setMapRef       = useStore(s => s.setMapRef)
-  const setUserLocation = useStore(s => s.setUserLocation)
   const mapStyle        = useStore(s => s.mapStyle)
   const is3D            = useStore(s => s.is3D)
   const showTraffic     = useStore(s => s.showTraffic)
@@ -43,6 +44,7 @@ export default function MapView() {
   const phase           = useStore(s => s.phase)
   const drivingView     = useStore(s => s.drivingView)
   const cockpitMode     = useStore(s => s.cockpitMode)
+  const driveCam        = useStore(s => s.driveCam)
   const savedPins        = useStore(s => s.savedPins)
   const pinDropMode      = useStore(s => s.pinDropMode)
   const addSavedPin      = useStore(s => s.addSavedPin)
@@ -75,19 +77,8 @@ export default function MapView() {
       addTerrain(map)
       addTrafficLayers(map)
       syncTrafficVisibility(map, showTraffic)
-
-      // Fly to user's GPS position as soon as map is ready
-      if (navigator.geolocation) {
-        navigator.geolocation.getCurrentPosition(
-          ({ coords }) => {
-            const { latitude: lat, longitude: lng } = coords
-            setUserLocation({ lat, lng })
-            map.flyTo({ center: [lng, lat], zoom: 15, pitch: 55, duration: 1800, essential: true })
-          },
-          (err) => console.warn('[MapView] Geolocation unavailable:', err.message),
-          { enableHighAccuracy: true, timeout: 8000 }
-        )
-      }
+      // First-fix camera flight is handled by the location marker effect
+      // (driven by useLocation's watchPosition) — no duplicate geolocation here.
     })
 
     mapRef.current       = map
@@ -116,7 +107,7 @@ export default function MapView() {
       addTrafficLayers(map)
       syncTrafficVisibility(map, showTraffic)
     })
-  }, [mapStyle, showTraffic])
+  }, [mapStyle])
 
   // ── 3D pitch toggle (not while navigating) ────────────────────────────
   useEffect(() => {
@@ -133,13 +124,18 @@ export default function MapView() {
     else map.once('style.load', () => syncTrafficVisibility(map, showTraffic))
   }, [showTraffic])
 
-  // ── User puck marker ──────────────────────────────────────────────────
+  // ── User location marker (changeable icon) ────────────────────────────
+  // Single effect owns the marker: creates it on first fix, rebuilds it when
+  // the icon choice changes, and keeps it glued to GPS + heading.
+  const locationIcon = useStore(s => s.locationIcon)
+  const markerIconRef = useRef(null)
   useEffect(() => {
     const map = mapRef.current
     if (!map || !userLocation) return
 
-    if (!userMarkerRef.current) {
-      const el = createUserPuck()
+    if (!userMarkerRef.current || markerIconRef.current !== locationIcon) {
+      userMarkerRef.current?.remove()
+      const el = createLocationMarker(locationIcon)
       userMarkerRef.current = new mapboxgl.Marker({
         element:           el,
         rotationAlignment: 'map',
@@ -147,6 +143,7 @@ export default function MapView() {
       })
         .setLngLat([userLocation.lng, userLocation.lat])
         .addTo(map)
+      markerIconRef.current = locationIcon
     } else {
       userMarkerRef.current.setLngLat([userLocation.lng, userLocation.lat])
     }
@@ -154,6 +151,12 @@ export default function MapView() {
     if (userHeading !== null && userHeading !== undefined) {
       userMarkerRef.current.setRotation(userHeading)
     }
+
+    // Driving view hides the marker (3D car / hood IS the location indicator)
+    const hidden = phase === PHASE.NAVIGATING && drivingView
+    const mEl = userMarkerRef.current.getElement()
+    mEl.style.opacity       = hidden ? '0' : '1'
+    mEl.style.pointerEvents = hidden ? 'none' : 'auto'
 
     // Fly to user's location on the first fix (GPS or IP), skip during active navigation
     if (!hasCenteredOnUser.current && phase !== PHASE.NAVIGATING) {
@@ -167,22 +170,48 @@ export default function MapView() {
         map.once('load', flyWhenReady)
       }
     }
-  }, [userLocation, userHeading])
+  }, [userLocation, userHeading, locationIcon, phase, drivingView])
 
-  // ── Hide puck in driving view (hood IS the location indicator) ────────
+  // ── Chase vehicle 3D overlay lifecycle ─────────────────────────────────
+  const chaseActive = phase === PHASE.NAVIGATING && drivingView && driveCam === 'chase'
+
   useEffect(() => {
-    if (!userMarkerRef.current) return
-    const el = userMarkerRef.current.getElement()
-    if (phase === PHASE.NAVIGATING && (drivingView || is3D)) {
-      el.style.opacity       = '0'
-      el.style.pointerEvents = 'none'
-    } else {
-      el.style.opacity       = '1'
-      el.style.pointerEvents = 'auto'
+    const map = mapRef.current
+    if (!map) return
+    if (!chaseActive || !userLocation) {
+      removeChaseVehicleLayer(map)
+      return
     }
-  }, [phase, drivingView, is3D])
+    const ensure = () => {
+      // Re-verify: navigation may have ended while the style was loading.
+      const st = useStore.getState()
+      const stillActive =
+        st.phase === PHASE.NAVIGATING && st.drivingView &&
+        st.driveCam === 'chase' && st.userLocation
+      if (!stillActive) return
+      setChaseVehicleProfile(st.cockpitMode)
+      addChaseVehicleLayer(map)
+    }
+    if (map.isStyleLoaded()) ensure()
+    else map.once('style.load', ensure)
+    return () => removeChaseVehicleLayer(map)
+  }, [chaseActive, cockpitMode]) // eslint-disable-line react-hooks/exhaustive-deps
 
+  // ── Keep the 3D car glued to GPS ──────────────────────────────────────
+  useEffect(() => {
+    if (!chaseActive || !userLocation) return
+    updateChaseVehiclePose({
+      lng: userLocation.lng,
+      lat: userLocation.lat,
+      heading: userHeading,
+    })
+  }, [chaseActive, userLocation, userHeading])
 
+  // Reset chase-cam smoothing whenever the chase view (re)engages so the
+  // camera doesn't sweep in from a stale bearing.
+  useEffect(() => {
+    if (chaseActive) resetChaseCam()
+  }, [chaseActive])
 
   // ── Tap-to-save map pins ──────────────────────────────────────────────
   useEffect(() => {
@@ -258,6 +287,21 @@ export default function MapView() {
       : map.getBearing()
 
     if (drivingView) {
+      if (driveCam === 'chase') {
+        // ── Behind-vehicle chase cam (main nav POV) ─────────────────────
+        // Bearing lags the GPS heading for game-style sway; the camera
+        // sits behind/above the 3D car with the road ahead in frame.
+        const target = chaseCamTarget({
+          lng: userLocation.lng,
+          lat: userLocation.lat,
+          heading: (userHeading !== null && userHeading !== undefined)
+            ? userHeading
+            : map.getBearing(),
+          speedMPH,
+          profile: cockpitMode,
+        })
+        map.easeTo(target)
+      } else {
       // Windshield perspective: lower horizon with stronger pitch and
       // speed-aware look-ahead so motion feels like cockpit driving.
       const clampedSpeed = Math.max(0, Math.min(speedMPH ?? 0, MAX_DRIVING_SPEED_MPH))
@@ -280,6 +324,7 @@ export default function MapView() {
         bearing,
         duration: cockpitTuning.duration,
       })
+      } // end cockpit/hood windshield branch
     } else {
       map.easeTo({
         center:   [userLocation.lng, userLocation.lat],
@@ -289,7 +334,10 @@ export default function MapView() {
         duration: 500,
       })
     }
-  }, [userLocation, userHeading, phase, is3D, drivingView, speedMPH, cockpitMode])
+
+    // Forza suggested line: color the stretch ahead blue/red by maneuver.
+    if (phase === PHASE.NAVIGATING) updateRouteSeverity()
+  }, [userLocation, userHeading, phase, is3D, drivingView, driveCam, speedMPH, cockpitMode])
 
   return <div ref={containerRef} className={styles.mapContainer} />
 }
@@ -386,29 +434,52 @@ function syncTrafficVisibility(map, showTraffic) {
   map.setLayoutProperty('traffic-line', 'visibility', showTraffic ? 'visible' : 'none')
 }
 
-// ── User puck — orange directional dot ───────────────────────────────────
-function createUserPuck() {
+// ── User location marker — changeable icon ──────────────────────────────
+// 'arrow' = classic nav arrow; 'car'/'truck'/'suv'/'van' = top-down vehicle
+// avatars. All point up; the Mapbox marker rotation handles heading.
+function createLocationMarker(icon = 'arrow') {
   const el = document.createElement('div')
-  el.style.cssText = 'width:28px;height:28px;position:relative;'
-  el.innerHTML = `
-    <div style="
-      position:absolute; inset:-6px; border-radius:50%;
-      background:rgba(255,149,0,0.15);
-      animation:puck-ring 2.2s ease-out infinite;
-    "></div>
-    <div style="
-      position:absolute; inset:0; border-radius:50%;
-      background:radial-gradient(circle at 38% 38%, #FF9500, #CC5500);
-      border:2.5px solid rgba(255,255,255,0.9);
-      box-shadow:0 0 14px rgba(255,149,0,0.85), 0 0 4px rgba(255,149,0,0.5);
-    "></div>
-    <style>
-      @keyframes puck-ring {
-        0%   { transform:scale(1);   opacity:.5 }
-        100% { transform:scale(2.6); opacity:0  }
-      }
-    </style>
-  `
+  el.style.cssText = 'width:44px;height:44px;position:relative;'
+
+  const ring = (inner) => `
+    <div style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center;
+      filter:drop-shadow(0 2px 6px rgba(0,0,0,0.55));">${inner}</div>`
+
+  if (icon === 'arrow') {
+    el.innerHTML = ring(`
+      <svg width="34" height="34" viewBox="0 0 34 34">
+        <path d="M17 3 L27 24 L17 19.5 L7 24 Z"
+          fill="#ffffff" stroke="#0b2a4a" stroke-width="2.5" stroke-linejoin="round"/>
+        <path d="M17 3 L27 24 L17 19.5 L7 24 Z"
+          fill="none" stroke="rgba(0,212,255,0.9)" stroke-width="1" stroke-linejoin="round"
+          transform="translate(0,0) scale(0.82) translate(3.7,3.7)"/>
+      </svg>`)
+    return el
+  }
+
+  // Vehicle avatars: top-down silhouette in a dark disc with cyan trim.
+  const bodies = {
+    car:   `<rect x="11" y="5" width="12" height="24" rx="4" fill="#dfe6f2"/>
+            <rect x="12.5" y="10" width="9" height="6" rx="1.5" fill="#0b1626"/>
+            <rect x="12.5" y="18.5" width="9" height="4" rx="1.5" fill="#16283f"/>`,
+    truck: `<rect x="10" y="4" width="14" height="10" rx="2" fill="#dfe6f2"/>
+            <rect x="12" y="6" width="10" height="4" rx="1" fill="#0b1626"/>
+            <rect x="11" y="15" width="12" height="15" rx="2" fill="#b9c6da"/>
+            <rect x="11" y="15" width="12" height="3" fill="#8fa0b8"/>`,
+    suv:   `<rect x="10" y="5" width="14" height="24" rx="5" fill="#dfe6f2"/>
+            <rect x="12" y="9" width="10" height="7" rx="2" fill="#0b1626"/>
+            <rect x="12" y="18" width="10" height="5" rx="2" fill="#16283f"/>`,
+    van:   `<rect x="9" y="4" width="16" height="26" rx="4" fill="#dfe6f2"/>
+            <rect x="11.5" y="7" width="11" height="5" rx="1.5" fill="#0b1626"/>
+            <rect x="11.5" y="14" width="11" height="12" rx="1.5" fill="#b9c6da"/>`,
+  }
+  const body = bodies[icon] || bodies.car
+  el.innerHTML = ring(`
+    <svg width="40" height="40" viewBox="0 0 40 40">
+      <circle cx="20" cy="20" r="18" fill="rgba(6,10,18,0.88)"
+        stroke="rgba(0,212,255,0.55)" stroke-width="1.5"/>
+      <g transform="translate(3,3)">${body}</g>
+    </svg>`)
   return el
 }
 
@@ -497,17 +568,99 @@ function _applyRouteToMap(map, geojson, isAlternate = false) {
 export function clearRoute() {
   const map = window._3dstreetsMap
   _drawnRoutes      = []
-  _routeCoordinates = []
   if (!map) return
   ;[
     'route-layer', 'route-layer-alt',
     'route-glow',  'route-casing',
     'route-main',  'route-alt',
     'sketch-layer', 'sketch-source',
+    'route-severity', 'route-severity-src',
   ].forEach(id => {
     if (map.getLayer(id))   map.removeLayer(id)
     if (map.getSource(id)) map.removeSource(id)
   })
+}
+
+// ── Forza suggested driving line ─────────────────────────────────────────
+// Colors the upcoming stretch of the current step like Forza's suggested
+// line: blue (#2E9BFF) = accelerate/keep going, red (#FF2A1A) = brake
+// ahead (sharp turn, uturn, roundabout, arrival). Updated at nav tick rate.
+const SEVERITY_SRC = 'route-severity-src'
+const SEVERITY_LYR = 'route-severity'
+const SUGGEST_BLUE = '#2E9BFF'
+const SUGGEST_RED  = '#FF2A1A'
+
+function _suggestColor(step) {
+  if (!step) return SUGGEST_BLUE
+  const mod  = String(step.modifier || '').toLowerCase()
+  const type = String(step.maneuver || '').toLowerCase()
+  const brake =
+    mod.includes('sharp') || mod.includes('uturn') ||
+    ['roundabout', 'rotary', 'arrive', 'exit roundabout', 'exit rotary'].includes(type)
+  return brake ? SUGGEST_RED : SUGGEST_BLUE
+}
+
+function _nearestCoordIdx(coords, lng, lat) {
+  let bi = 0, bd = Infinity
+  for (let i = 0; i < coords.length; i += 4) {
+    const dx = coords[i][0] - lng, dy = coords[i][1] - lat
+    const d = dx * dx + dy * dy
+    if (d < bd) { bd = d; bi = i }
+  }
+  for (let i = Math.max(0, bi - 4); i < Math.min(coords.length, bi + 5); i++) {
+    const dx = coords[i][0] - lng, dy = coords[i][1] - lat
+    const d = dx * dx + dy * dy
+    if (d < bd) { bd = d; bi = i }
+  }
+  return bi
+}
+
+export function updateRouteSeverity() {
+  const map = window._3dstreetsMap
+  if (!map || !map.getLayer('route-layer')) return
+  const st = useStore.getState()
+  const coords = st.selectedRoute?.geometry?.coordinates
+  const loc = st.userLocation
+
+  if (st.phase !== PHASE.NAVIGATING || !loc || !Array.isArray(coords) || coords.length < 2) {
+    if (map.getSource(SEVERITY_SRC)) {
+      map.getSource(SEVERITY_SRC).setData({ type: 'FeatureCollection', features: [] })
+    }
+    return
+  }
+
+  if (!map.getSource(SEVERITY_SRC)) {
+    map.addSource(SEVERITY_SRC, {
+      type: 'geojson',
+      data: { type: 'FeatureCollection', features: [] },
+    })
+    map.addLayer({
+      id: SEVERITY_LYR, type: 'line', source: SEVERITY_SRC, slot: 'top',
+      paint: {
+        'line-color': SUGGEST_BLUE,
+        'line-width': ['interpolate', ['linear'], ['zoom'], 10, 7, 16, 10],
+        'line-opacity': 0.95,
+      },
+      layout: { 'line-cap': 'round', 'line-join': 'round' },
+    })
+  }
+
+  const next = st.routeSteps?.[st.currentStepIndex + 1]
+  const a = _nearestCoordIdx(coords, loc.lng, loc.lat)
+  let b = Math.min(coords.length - 1, a + 60)
+  if (next?.location) {
+    const mb = _nearestCoordIdx(coords, next.location[0], next.location[1])
+    b = Math.max(a + 2, mb + 1)
+  }
+  const seg = coords.slice(a, b)
+  seg[0] = [loc.lng, loc.lat] // start exactly at the car
+
+  map.getSource(SEVERITY_SRC).setData({
+    type: 'Feature',
+    geometry: { type: 'LineString', coordinates: seg },
+    properties: {},
+  })
+  map.setPaintProperty(SEVERITY_LYR, 'line-color', _suggestColor(next))
 }
 
 export function fitRoute(coordinates, bottomPad = 320) {
@@ -524,28 +677,3 @@ export function fitRoute(coordinates, bottomPad = 320) {
   })
 }
 
-export function drawSketchPreview(coords) {
-  const map = window._3dstreetsMap
-  if (!map || coords.length < 2) return
-  if (map.getLayer('sketch-layer'))   map.removeLayer('sketch-layer')
-  if (map.getSource('sketch-source')) map.removeSource('sketch-source')
-
-  map.addSource('sketch-source', {
-    type: 'geojson',
-    data: {
-      type:     'Feature',
-      geometry: { type: 'LineString', coordinates: coords.map(c => [c.lng, c.lat]) },
-    },
-  })
-  map.addLayer({
-    id: 'sketch-layer', type: 'line', source: 'sketch-source',
-    slot: 'top',
-    paint: {
-      'line-color':     ROUTE_COLOR,
-      'line-width':     3,
-      'line-dasharray': [5, 4],
-      'line-opacity':   0.85,
-    },
-    layout: { 'line-cap': 'round', 'line-join': 'round' },
-  })
-}

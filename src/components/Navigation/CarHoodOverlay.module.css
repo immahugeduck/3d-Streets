@@ -78,39 +78,6 @@
   pointer-events: auto;
 }
 
-.speedIndicator {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  background: rgba(5, 7, 14, 0.85);
-  border: 1px solid rgba(0, 212, 255, 0.25);
-  border-radius: 10px;
-  padding: 10px 16px;
-  backdrop-filter: blur(10px);
-  box-shadow:
-    0 0 20px rgba(0, 212, 255, 0.12),
-    inset 0 1px 0 rgba(255, 255, 255, 0.06);
-}
-
-.speedValue {
-  font-family: var(--font-hud);
-  font-size: 32px;
-  font-weight: 800;
-  color: var(--accent, #00d4ff);
-  line-height: 1;
-  letter-spacing: -0.03em;
-}
-
-.speedUnit {
-  font-family: var(--font-hud);
-  font-size: 9px;
-  font-weight: 700;
-  letter-spacing: 0.12em;
-  color: var(--text-muted, #6b7280);
-  margin-top: 3px;
-  text-transform: uppercase;
-}
-
 .viewToggle {
   width: 44px;
   height: 44px;
@@ -152,102 +119,40 @@
     bottom: calc(110px + var(--safe-bottom, 0px));
     padding: 0 52px;
   }
-
-  .speedIndicator {
-    padding: 12px 22px;
-  }
-
-  .speedValue {
-    font-size: 40px;
-  }
-
-  .speedUnit {
-    font-size: 10px;
-  }
 }
-
 
 .cluster {
   display: flex;
   align-items: flex-end;
-  gap: 12px;
+  gap: 10px;
 }
 
-.steeringWheel {
-  width: 94px;
-  height: 94px;
-  border-radius: 50%;
-  border: 8px solid rgba(14, 18, 28, 0.95);
-  box-shadow: inset 0 0 0 2px rgba(120, 130, 150, 0.15), 0 10px 24px rgba(0, 0, 0, 0.5);
-  background: radial-gradient(circle at 50% 30%, rgba(255, 255, 255, 0.12), rgba(30, 34, 48, 0.95));
-  position: relative;
+/* Forza-style 3-spoke wheel */
+.wheelSvg {
+  width: 100px;
+  height: 100px;
+  flex-shrink: 0;
+  filter: drop-shadow(0 12px 26px rgba(0, 0, 0, 0.55));
 }
 
-.steeringWheel::before,
-.steeringWheel::after {
-  content: '';
-  position: absolute;
-  background: rgba(9, 12, 20, 0.95);
-  border-radius: 20px;
+/* Gauge cluster housing the tachometer */
+.gaugeCluster {
+  background: rgba(4, 6, 12, 0.88);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 14px;
+  padding: 4px 6px 0;
+  box-shadow:
+    0 10px 28px rgba(0, 0, 0, 0.55),
+    inset 0 1px 0 rgba(255, 255, 255, 0.06);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
 }
 
-.steeringWheel::before {
-  width: 12px;
-  height: 50px;
-  left: 50%;
-  top: 4px;
-  transform: translateX(-50%);
+.tachSvg {
+  width: 168px;
+  height: auto;
+  display: block;
 }
-
-.steeringWheel::after {
-  width: 48px;
-  height: 12px;
-  left: 50%;
-  bottom: 18px;
-  transform: translateX(-50%);
-}
-
-.wheelCenter {
-  position: absolute;
-  inset: 27px;
-  border-radius: 50%;
-  background: radial-gradient(circle at 35% 25%, rgba(255, 255, 255, 0.18), rgba(20, 24, 36, 0.98));
-  border: 1px solid rgba(220, 230, 255, 0.12);
-}
-
-.navDisplay {
-  flex: 1;
-  min-width: 0;
-  margin: 0 10px;
-  background: rgba(4, 7, 12, 0.9);
-  border: 1px solid rgba(0, 212, 255, 0.25);
-  border-radius: 12px;
-  padding: 10px 12px;
-  box-shadow: 0 0 22px rgba(0, 212, 255, 0.08);
-}
-
-.navDisplayTop { display: flex; align-items: baseline; gap: 10px; }
-.navManeuver { font-size: 26px; color: var(--accent, #00d4ff); line-height: 1; }
-.navDistance { font-size: 21px; font-weight: 800; letter-spacing: -0.01em; }
-.navInstruction {
-  margin-top: 4px;
-  font-size: 12px;
-  color: var(--text-secondary, #a6afbc);
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-.navMeta {
-  margin-top: 8px;
-  display: flex;
-  justify-content: space-between;
-  gap: 8px;
-  font-size: 10px;
-  letter-spacing: 0.08em;
-  color: var(--text-muted, #778091);
-  text-transform: uppercase;
-}
-.navNext { color: #89e8ff; }
 
 @media (max-width: 640px) {
   .dashboard {
@@ -255,37 +160,13 @@
     bottom: calc(84px + var(--safe-bottom, 0px));
   }
 
-  .steeringWheel {
-    width: 72px;
-    height: 72px;
-    border-width: 6px;
+  .wheelSvg {
+    width: 76px;
+    height: 76px;
   }
 
-  .wheelCenter { inset: 20px; }
-
-  .speedValue { font-size: 26px; }
-  .speedIndicator { padding: 8px 12px; }
-  .navDisplay { padding: 8px 10px; }
-  .navDistance { font-size: 18px; }
+  .tachSvg { width: 128px; }
 }
-
-/* Forza-inspired cockpit tuning presets */
-.mode-comfort .windshieldVignette {
-  background:
-    radial-gradient(120% 70% at 50% 100%, rgba(0, 0, 0, 0) 48%, rgba(0, 0, 0, 0.32) 100%),
-    linear-gradient(to top, rgba(0, 0, 0, 0.32) 0%, rgba(0, 0, 0, 0.08) 36%, rgba(0, 0, 0, 0) 70%);
-}
-
-.mode-sport .windshieldGlare {
-  opacity: 0.78;
-}
-
-.mode-cinematic .windshieldVignette {
-  background:
-    radial-gradient(120% 70% at 50% 100%, rgba(0, 0, 0, 0) 36%, rgba(0, 0, 0, 0.46) 100%),
-    linear-gradient(to top, rgba(0, 0, 0, 0.5) 0%, rgba(0, 0, 0, 0.2) 36%, rgba(0, 0, 0, 0) 70%);
-}
-
 .rearViewStrip {
   position: absolute;
   top: 8px;
