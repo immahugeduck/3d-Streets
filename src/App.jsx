@@ -171,6 +171,14 @@ const VIEW_MODES = [
   { key: 'hood',    label: 'Hood',    icon: 'HD' },
 ]
 
+const LOCATION_ICONS = [
+  { key: 'arrow', label: 'Arrow', icon: '➤' },
+  { key: 'car',   label: 'Car',   icon: '▮' },
+  { key: 'truck', label: 'Truck', icon: '▤' },
+  { key: 'suv',   label: 'SUV',   icon: '▦' },
+  { key: 'van',   label: 'Van',   icon: '▧' },
+]
+
 function SettingsOverlay({ onClose }) {
   const [page, setPage] = useState(0)
 
@@ -186,6 +194,8 @@ function SettingsOverlay({ onClose }) {
   const setDriveCam    = useStore(s => s.setDriveCam)
   const cockpitMode    = useStore(s => s.cockpitMode)
   const setCockpitMode = useStore(s => s.setCockpitMode)
+  const locationIcon   = useStore(s => s.locationIcon)
+  const setLocationIcon = useStore(s => s.setLocationIcon)
 
   return (
     <>
@@ -276,6 +286,18 @@ function SettingsOverlay({ onClose }) {
                 <div className={styles.styleGrid}>
                   {COCKPIT_MODES.map(v => (
                     <button key={v.key} className={`${styles.styleCard} ${cockpitMode === v.key ? styles.styleCardActive : ''}`} onClick={() => setCockpitMode(v.key)}>
+                      <span className={styles.styleCardIcon}>{v.icon}</span>
+                      <span className={styles.styleCardLabel}>{v.label}</span>
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              <div className={styles.section}>
+                <div className={styles.sectionLabel}>LOCATION ICON</div>
+                <div className={styles.styleGrid}>
+                  {LOCATION_ICONS.map(v => (
+                    <button key={v.key} className={`${styles.styleCard} ${locationIcon === v.key ? styles.styleCardActive : ''}`} onClick={() => setLocationIcon(v.key)}>
                       <span className={styles.styleCardIcon}>{v.icon}</span>
                       <span className={styles.styleCardLabel}>{v.label}</span>
                     </button>

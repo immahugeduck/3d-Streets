@@ -76,9 +76,13 @@ motion blur, subtle shake. No vignette.
 
 ## 6. Cockpit / hood views
 
-- Cockpit: working digital speed readout + animated steering wheel that tracks
-  heading (`GameShell.jsx`, `CarHoodOverlay.jsx`).
+- Cockpit: Forza-style 3-spoke steering wheel that rotates with steering
+  input, plus a working gauge cluster — tach arc with redline zone, live
+  needle driven by speed, digital speed readout, gear indicator
+  (`CarHoodOverlay.jsx` → `SteeringWheel` / `Tachometer`).
 - Hood: hood-only framing, wheel hidden.
+- All drive settings (drive camera, vehicle profile, location icon) live in
+  the Settings panel — nothing selectable floats over the map.
 - FM6 authenticity notes for future work: 30 fps mirror render targets,
   rain droplets + wiper sweep, micro head-bob under braking.
 

@@ -141,23 +141,48 @@ export default function MapView() {
     else map.once('style.load', () => syncTrafficVisibility(map, showTraffic))
   }, [showTraffic])
 
-  // ── User puck marker ──────────────────────────────────────────────────
+  // ── User location marker (changeable icon) ────────────────────────────
+  const locationIcon = useStore(s => s.locationIcon)
   useEffect(() => {
     const map = mapRef.current
     if (!map || !userLocation) return
 
-    if (!userMarkerRef.current) {
-      const el = createUserPuck()
-      userMarkerRef.current = new mapboxgl.Marker({
-        element:           el,
-        rotationAlignment: 'map',
-        pitchAlignment:    'map',
-      })
-        .setLngLat([userLocation.lng, userLocation.lat])
-        .addTo(map)
-    } else {
-      userMarkerRef.current.setLngLat([userLocation.lng, userLocation.lat])
+    // Recreate the marker when the icon choice changes.
+    if (userMarkerRef.current) {
+      userMarkerRef.current.remove()
+      userMarkerRef.current = null
     }
+    const el = createLocationMarker(locationIcon)
+    userMarkerRef.current = new mapboxgl.Marker({
+      element:           el,
+      rotationAlignment: 'map',
+      pitchAlignment:    'map',
+    })
+      .setLngLat([userLocation.lng, userLocation.lat])
+      .addTo(map)
+
+    if (userHeading !== null && userHeading !== undefined) {
+      userMarkerRef.current.setRotation(userHeading)
+    }
+
+    // Apply driving-view visibility to the fresh element.
+    const st = useStore.getState()
+    const hidden = st.phase === PHASE.NAVIGATING && st.drivingView
+    const newEl = userMarkerRef.current.getElement()
+    newEl.style.opacity = hidden ? '0' : '1'
+    newEl.style.pointerEvents = hidden ? 'none' : 'auto'
+
+    return () => {
+      userMarkerRef.current?.remove()
+      userMarkerRef.current = null
+    }
+  }, [locationIcon]) // eslint-disable-line react-hooks/exhaustive-deps
+
+  // ── Keep marker glued to GPS ──────────────────────────────────────────
+  useEffect(() => {
+    const map = mapRef.current
+    if (!map || !userLocation || !userMarkerRef.current) return
+    userMarkerRef.current.setLngLat([userLocation.lng, userLocation.lat])
 
     if (userHeading !== null && userHeading !== undefined) {
       userMarkerRef.current.setRotation(userHeading)
@@ -177,7 +202,7 @@ export default function MapView() {
     }
   }, [userLocation, userHeading])
 
-  // ── Hide puck in driving view (3D car / hood IS the location indicator)
+  // ── Hide marker in driving view (3D car / hood IS the location indicator)
   useEffect(() => {
     if (!userMarkerRef.current) return
     const el = userMarkerRef.current.getElement()
@@ -448,29 +473,52 @@ function syncTrafficVisibility(map, showTraffic) {
   map.setLayoutProperty('traffic-line', 'visibility', showTraffic ? 'visible' : 'none')
 }
 
-// ── User puck — orange directional dot ───────────────────────────────────
-function createUserPuck() {
+// ── User location marker — changeable icon ──────────────────────────────
+// 'arrow' = classic nav arrow; 'car'/'truck'/'suv'/'van' = top-down vehicle
+// avatars. All point up; the Mapbox marker rotation handles heading.
+function createLocationMarker(icon = 'arrow') {
   const el = document.createElement('div')
-  el.style.cssText = 'width:28px;height:28px;position:relative;'
-  el.innerHTML = `
-    <div style="
-      position:absolute; inset:-6px; border-radius:50%;
-      background:rgba(255,149,0,0.15);
-      animation:puck-ring 2.2s ease-out infinite;
-    "></div>
-    <div style="
-      position:absolute; inset:0; border-radius:50%;
-      background:radial-gradient(circle at 38% 38%, #FF9500, #CC5500);
-      border:2.5px solid rgba(255,255,255,0.9);
-      box-shadow:0 0 14px rgba(255,149,0,0.85), 0 0 4px rgba(255,149,0,0.5);
-    "></div>
-    <style>
-      @keyframes puck-ring {
-        0%   { transform:scale(1);   opacity:.5 }
-        100% { transform:scale(2.6); opacity:0  }
-      }
-    </style>
-  `
+  el.style.cssText = 'width:44px;height:44px;position:relative;'
+
+  const ring = (inner) => `
+    <div style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center;
+      filter:drop-shadow(0 2px 6px rgba(0,0,0,0.55));">${inner}</div>`
+
+  if (icon === 'arrow') {
+    el.innerHTML = ring(`
+      <svg width="34" height="34" viewBox="0 0 34 34">
+        <path d="M17 3 L27 24 L17 19.5 L7 24 Z"
+          fill="#ffffff" stroke="#0b2a4a" stroke-width="2.5" stroke-linejoin="round"/>
+        <path d="M17 3 L27 24 L17 19.5 L7 24 Z"
+          fill="none" stroke="rgba(0,212,255,0.9)" stroke-width="1" stroke-linejoin="round"
+          transform="translate(0,0) scale(0.82) translate(3.7,3.7)"/>
+      </svg>`)
+    return el
+  }
+
+  // Vehicle avatars: top-down silhouette in a dark disc with cyan trim.
+  const bodies = {
+    car:   `<rect x="11" y="5" width="12" height="24" rx="4" fill="#dfe6f2"/>
+            <rect x="12.5" y="10" width="9" height="6" rx="1.5" fill="#0b1626"/>
+            <rect x="12.5" y="18.5" width="9" height="4" rx="1.5" fill="#16283f"/>`,
+    truck: `<rect x="10" y="4" width="14" height="10" rx="2" fill="#dfe6f2"/>
+            <rect x="12" y="6" width="10" height="4" rx="1" fill="#0b1626"/>
+            <rect x="11" y="15" width="12" height="15" rx="2" fill="#b9c6da"/>
+            <rect x="11" y="15" width="12" height="3" fill="#8fa0b8"/>`,
+    suv:   `<rect x="10" y="5" width="14" height="24" rx="5" fill="#dfe6f2"/>
+            <rect x="12" y="9" width="10" height="7" rx="2" fill="#0b1626"/>
+            <rect x="12" y="18" width="10" height="5" rx="2" fill="#16283f"/>`,
+    van:   `<rect x="9" y="4" width="16" height="26" rx="4" fill="#dfe6f2"/>
+            <rect x="11.5" y="7" width="11" height="5" rx="1.5" fill="#0b1626"/>
+            <rect x="11.5" y="14" width="11" height="12" rx="1.5" fill="#b9c6da"/>`,
+  }
+  const body = bodies[icon] || bodies.car
+  el.innerHTML = ring(`
+    <svg width="40" height="40" viewBox="0 0 40 40">
+      <circle cx="20" cy="20" r="18" fill="rgba(6,10,18,0.88)"
+        stroke="rgba(0,212,255,0.55)" stroke-width="1.5"/>
+      <g transform="translate(3,3)">${body}</g>
+    </svg>`)
   return el
 }
 

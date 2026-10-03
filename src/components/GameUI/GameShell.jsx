@@ -18,7 +18,6 @@ function getSteeringAngle(heading) {
 
 export default function GameShell() {
   const cockpitMode = useStore(s => s.cockpitMode)
-  const setCockpitMode = useStore(s => s.setCockpitMode)
   const driveCam = useStore(s => s.driveCam)
   const phase = useStore(s => s.phase)
   const speedMPH = useStore(s => s.speedMPH)
@@ -51,25 +50,6 @@ export default function GameShell() {
       aria-label="Premium driving cockpit interface"
     >
       <div className={styles.windshieldTint} />
-
-      {!navActive && (
-        <div className={styles.profileDock}>
-          <span>Vehicle</span>
-          <div className={styles.vehicleTabs} aria-label="Vehicle profile selector">
-            {VEHICLE_PROFILES.map(mode => (
-              <button
-                key={mode.id}
-                className={`${styles.vehicleTab} ${cockpitMode === mode.id ? styles.vehicleTabActive : ''}`}
-                type="button"
-                onClick={() => setCockpitMode(mode.id)}
-                aria-pressed={cockpitMode === mode.id}
-              >
-                {mode.label}
-              </button>
-            ))}
-          </div>
-        </div>
-      )}
 
       {navActive && <div className={styles.centerGuide}><span /></div>}
 

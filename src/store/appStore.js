@@ -104,6 +104,8 @@ const useStore = create((set, get) => ({
   // Drive camera: 'chase' = behind-vehicle POV (main nav view),
   // 'cockpit' = in-car dash view, 'hood' = hood-only view.
   driveCam: 'chase',
+  // Map location indicator icon: 'arrow' | 'car' | 'truck' | 'suv' | 'van'
+  locationIcon: 'arrow',
   setMapStyle: (mapStyle) => set({ mapStyle }),
   setIs3D: (is3D) => set({ is3D }),
   setShowTraffic: (showTraffic) => set({ showTraffic }),
@@ -113,6 +115,9 @@ const useStore = create((set, get) => ({
   setCockpitMode: (cockpitMode) => set({ cockpitMode }),
   setDriveCam: (driveCam) => set({
     driveCam: ['chase', 'cockpit', 'hood'].includes(driveCam) ? driveCam : 'chase',
+  }),
+  setLocationIcon: (locationIcon) => set({
+    locationIcon: ['arrow', 'car', 'truck', 'suv', 'van'].includes(locationIcon) ? locationIcon : 'arrow',
   }),
 
   userLocation: null,
