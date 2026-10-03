@@ -89,7 +89,7 @@ export default function App() {
       </AnimatePresence>
 
       <AnimatePresence>
-        {phase === PHASE.NAVIGATING && showRouteStops && (
+        {(phase === PHASE.NAVIGATING || phase === PHASE.ROUTE_PREVIEW) && showRouteStops && (
           <RouteStopsPanel key="route-stops" />
         )}
       </AnimatePresence>

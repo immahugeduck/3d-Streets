@@ -19,7 +19,6 @@ export function useNavigationProgress() {
   const routePref        = useStore(s => s.routePref)
   const selectedRoute    = useStore(s => s.selectedRoute)
   const speedMPH         = useStore(s => s.speedMPH)
-  const routeLocked      = useStore(s => s.routeLocked)
 
   const setCurrentStepIndex    = useStore(s => s.setCurrentStepIndex)
   const setEta                 = useStore(s => s.setEta)
@@ -180,8 +179,8 @@ export function useNavigationProgress() {
       }
     }
 
-    // ─── Off-route detection (only if route not locked) ───────────────────
-    if (!routeLocked && selectedRoute?.geometry?.coordinates) {
+    // ─── Off-route detection ────────────────────────────────────────────
+    if (selectedRoute?.geometry?.coordinates) {
       const distToRoute = pointToLineDistanceM(
         { lat: userLocation.lat, lng: userLocation.lng },
         selectedRoute.geometry.coordinates
@@ -250,7 +249,7 @@ export function useNavigationProgress() {
     setStepDistLabel(formatDist(distToNextManeuver))
     setRemainingDist(formatDist(totalRemainingM))
     setEta(formatDur(etaSeconds))
-  }, [userLocation, phase, currentStepIndex, routeSteps, selectedRoute, speedMPH, routeLocked,
+  }, [userLocation, phase, currentStepIndex, routeSteps, selectedRoute, speedMPH,
       triggerReroute, setCurrentStepIndex, endNavigation,
       setRemainingDist, setEta, setStepDistLabel, setArrivalClockTime])
 

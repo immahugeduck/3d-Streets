@@ -125,7 +125,6 @@ export function addChaseVehicleLayer(map) {
   }
 
   map.addLayer(impl)
-  applyProfile(impl)
 }
 
 export function removeChaseVehicleLayer(map) {
@@ -133,20 +132,6 @@ export function removeChaseVehicleLayer(map) {
     try { map.removeLayer(LAYER_ID) } catch { /* noop */ }
   }
   if (_map === map) _map = null
-}
-
-// Rebuild the car mesh when the vehicle profile changes.
-export function refreshChaseVehicleProfile(map) {
-  if (!map || !map.getLayer(LAYER_ID)) return
-  removeChaseVehicleLayer(map)
-  addChaseVehicleLayer(map)
-}
-
-function applyProfile(impl) {
-  if (!impl?.scene || !impl?.car) return
-  impl.scene.remove(impl.car)
-  impl.car = buildCar()
-  impl.scene.add(impl.car)
 }
 
 // ── Car model (meters, ENU: +Y = nose direction) ───────────────────────────

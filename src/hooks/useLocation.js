@@ -32,6 +32,7 @@ export function useLocation() {
   const setSpeedMPH     = useStore(s => s.setSpeedMPH)
   const watchId = useRef(null)
   const gotRealGPS = useRef(false)
+  const prevFix = useRef(null)
 
   useEffect(() => {
     // Set home location immediately so map/search works before GPS resolves
@@ -40,7 +41,6 @@ export function useLocation() {
     // Try to improve with IP-based location while waiting for GPS
     getIPLocation().then(ipLoc => {
       if (ipLoc && !gotRealGPS.current) {
-        console.log('[v0] IP location resolved:', ipLoc)
         setUserLocation(ipLoc)
       }
     })
@@ -60,7 +60,15 @@ export function useLocation() {
         setUserLocation({ lat: latitude, lng: longitude })
         if (speed !== null && speed >= 0) {
           setSpeedMPH(speed * 2.23694)
+        } else if (prevFix.current) {
+          // No speed from GPS: if we haven't moved, we're stopped —
+          // don't leave the last speed frozen on the speedometer.
+          const dLat = (latitude - prevFix.current.lat) * 111320
+          const dLng = (longitude - prevFix.current.lng) * 111320 *
+            Math.cos((latitude * Math.PI) / 180)
+          if (Math.hypot(dLat, dLng) < 3) setSpeedMPH(0)
         }
+        prevFix.current = { lat: latitude, lng: longitude }
         if (heading !== null) {
           setUserHeading(heading)
         }
@@ -78,15 +86,4 @@ export function useLocation() {
       }
     }
   }, [])
-}
-
-// One-shot get location
-export function getCurrentPosition() {
-  return new Promise((resolve, reject) => {
-    navigator.geolocation.getCurrentPosition(
-      pos => resolve({ lat: pos.coords.latitude, lng: pos.coords.longitude }),
-      reject,
-      { enableHighAccuracy: true, timeout: 8000 }
-    )
-  })
 }

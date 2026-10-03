@@ -78,39 +78,6 @@
   pointer-events: auto;
 }
 
-.speedIndicator {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  background: rgba(5, 7, 14, 0.85);
-  border: 1px solid rgba(0, 212, 255, 0.25);
-  border-radius: 10px;
-  padding: 10px 16px;
-  backdrop-filter: blur(10px);
-  box-shadow:
-    0 0 20px rgba(0, 212, 255, 0.12),
-    inset 0 1px 0 rgba(255, 255, 255, 0.06);
-}
-
-.speedValue {
-  font-family: var(--font-hud);
-  font-size: 32px;
-  font-weight: 800;
-  color: var(--accent, #00d4ff);
-  line-height: 1;
-  letter-spacing: -0.03em;
-}
-
-.speedUnit {
-  font-family: var(--font-hud);
-  font-size: 9px;
-  font-weight: 700;
-  letter-spacing: 0.12em;
-  color: var(--text-muted, #6b7280);
-  margin-top: 3px;
-  text-transform: uppercase;
-}
-
 .viewToggle {
   width: 44px;
   height: 44px;
@@ -152,20 +119,7 @@
     bottom: calc(110px + var(--safe-bottom, 0px));
     padding: 0 52px;
   }
-
-  .speedIndicator {
-    padding: 12px 22px;
-  }
-
-  .speedValue {
-    font-size: 40px;
-  }
-
-  .speedUnit {
-    font-size: 10px;
-  }
 }
-
 
 .cluster {
   display: flex;
@@ -200,40 +154,6 @@
   display: block;
 }
 
-.navDisplay {
-  flex: 1;
-  min-width: 0;
-  margin: 0 10px;
-  background: rgba(4, 7, 12, 0.9);
-  border: 1px solid rgba(0, 212, 255, 0.25);
-  border-radius: 12px;
-  padding: 10px 12px;
-  box-shadow: 0 0 22px rgba(0, 212, 255, 0.08);
-}
-
-.navDisplayTop { display: flex; align-items: baseline; gap: 10px; }
-.navManeuver { font-size: 26px; color: var(--accent, #00d4ff); line-height: 1; }
-.navDistance { font-size: 21px; font-weight: 800; letter-spacing: -0.01em; }
-.navInstruction {
-  margin-top: 4px;
-  font-size: 12px;
-  color: var(--text-secondary, #a6afbc);
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-.navMeta {
-  margin-top: 8px;
-  display: flex;
-  justify-content: space-between;
-  gap: 8px;
-  font-size: 10px;
-  letter-spacing: 0.08em;
-  color: var(--text-muted, #778091);
-  text-transform: uppercase;
-}
-.navNext { color: #89e8ff; }
-
 @media (max-width: 640px) {
   .dashboard {
     padding: 0 16px;
@@ -246,30 +166,7 @@
   }
 
   .tachSvg { width: 128px; }
-
-  .speedValue { font-size: 26px; }
-  .speedIndicator { padding: 8px 12px; }
-  .navDisplay { padding: 8px 10px; }
-  .navDistance { font-size: 18px; }
 }
-
-/* Forza-inspired cockpit tuning presets */
-.mode-comfort .windshieldVignette {
-  background:
-    radial-gradient(120% 70% at 50% 100%, rgba(0, 0, 0, 0) 48%, rgba(0, 0, 0, 0.32) 100%),
-    linear-gradient(to top, rgba(0, 0, 0, 0.32) 0%, rgba(0, 0, 0, 0.08) 36%, rgba(0, 0, 0, 0) 70%);
-}
-
-.mode-sport .windshieldGlare {
-  opacity: 0.78;
-}
-
-.mode-cinematic .windshieldVignette {
-  background:
-    radial-gradient(120% 70% at 50% 100%, rgba(0, 0, 0, 0) 36%, rgba(0, 0, 0, 0.46) 100%),
-    linear-gradient(to top, rgba(0, 0, 0, 0.5) 0%, rgba(0, 0, 0, 0.2) 36%, rgba(0, 0, 0, 0) 70%);
-}
-
 .rearViewStrip {
   position: absolute;
   top: 8px;

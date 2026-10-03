@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
+import { getManeuverIcon } from '../../utils/maneuvers'
 import useStore from '../../store/appStore'
 import styles from './NavMinimap.module.css'
 
@@ -8,19 +9,6 @@ import styles from './NavMinimap.module.css'
 // Pure 2D canvas — cheap, fully styleable, no second map instance needed.
 const AHEAD_M = 320       // meters of route shown ahead of the car
 const BEHIND_M = 130      // meters shown behind
-
-const MANEUVER_ICONS = {
-  'turn-left': '↰', 'turn-right': '↱',
-  'turn-slight-left': '↖', 'turn-slight-right': '↗',
-  'turn-sharp-left': '⬐', 'turn-sharp-right': '⬏',
-  uturn: '↩', roundabout: '↻', merge: '⤵', arrive: '◉', depart: '▲',
-  straight: '↑', default: '↑',
-}
-function maneuverIcon(type, modifier) {
-  if (!type) return '↑'
-  const key = modifier ? `${type}-${modifier}`.replace(/ /g, '-') : type
-  return MANEUVER_ICONS[key] ?? MANEUVER_ICONS[type] ?? '↑'
-}
 
 function toMeters(lng, lat, lng0, lat0, cosLat) {
   return [(lng - lng0) * 111320 * cosLat, (lat - lat0) * 111320]
@@ -77,7 +65,7 @@ export default function NavMinimap() {
   }, [size])
 
   const next = routeSteps[currentStepIndex + 1]
-  const icon = maneuverIcon(next?.maneuver, next?.modifier)
+  const icon = getManeuverIcon(next?.maneuver, next?.modifier)
 
   return (
     <div className={styles.cluster} aria-label="Route minimap">

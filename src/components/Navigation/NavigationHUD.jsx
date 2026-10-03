@@ -1,36 +1,8 @@
 import { useEffect } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
+import { getManeuverIcon } from '../../utils/maneuvers'
 import useStore from '../../store/appStore'
 import styles from './NavigationHUD.module.css'
-
-// Maneuver type → icon mapping
-const MANEUVER_ICONS = {
-  'turn-left':         '↰',
-  'turn-right':        '↱',
-  'turn-slight-left':  '↖',
-  'turn-slight-right': '↗',
-  'turn-sharp-left':   '⬐',
-  'turn-sharp-right':  '⬏',
-  'uturn':             '↩',
-  'roundabout':        '↻',
-  'merge':             '⤵',
-  'off-ramp-left':     '⬐',
-  'off-ramp-right':    '⬏',
-  'arrive':            '📍',
-  'depart':            '🚀',
-  'straight':          '↑',
-  'default':           '↑',
-}
-
-function getManeuverIcon(type, modifier) {
-  if (!type) return '↑'
-  const key = modifier ? `${type}-${modifier}`.replace(/ /g, '-') : type
-  return MANEUVER_ICONS[key] ?? MANEUVER_ICONS[type] ?? '↑'
-}
-
-function speedState() {
-  return 'normal'
-}
 
 export default function NavigationHUD() {
   const endNavigation      = useStore(s => s.endNavigation)
@@ -43,9 +15,6 @@ export default function NavigationHUD() {
   const speedMPH           = useStore(s => s.speedMPH)
   const showSpeedHUD       = useStore(s => s.showSpeedHUD)
   const openAI             = useStore(s => s.openAI)
-  const rerouteAvailable   = useStore(s => s.rerouteAvailable)
-  const rerouteTimeSave    = useStore(s => s.rerouteTimeSave)
-  const setRerouteAvail    = useStore(s => s.setRerouteAvailable)
   const waypoints          = useStore(s => s.waypoints)
   const destination        = useStore(s => s.destination)
   const setShowRouteStops  = useStore(s => s.setShowRouteStops)
@@ -58,7 +27,6 @@ export default function NavigationHUD() {
 
   const step     = routeSteps[currentStepIndex]
   const nextStep = routeSteps[currentStepIndex + 1]
-  const state    = speedState()
 
   // Live countdown: prefer the 1-second-refresh stepDistLabel; fall back to
   // the static distanceLabel from the route until the first tick fires.
@@ -152,34 +120,10 @@ export default function NavigationHUD() {
         )}
       </AnimatePresence>
 
-      {/* ── Reroute banner ────────────────────────────────────────────── */}
-      <AnimatePresence>
-        {rerouteAvailable && (
-          <motion.div
-            className={styles.rerouteBanner}
-            initial={{ y: -20, opacity: 0 }}
-            animate={{ y: 0, opacity: 1 }}
-            exit={{ y: -20, opacity: 0 }}
-          >
-            <div className={styles.rerouteLeft}>
-              <div className={styles.rerouteDot} />
-              <div>
-                <div className={styles.rerouteTitle}>Faster route found</div>
-                <div className={styles.rerouteSub}>Saves {rerouteTimeSave}</div>
-              </div>
-            </div>
-            <div className={styles.rerouteActions}>
-              <button className={styles.rerouteAccept} onClick={() => setRerouteAvail(false)}>Go</button>
-              <button className={styles.rerouteDismiss} onClick={() => setRerouteAvail(false)}>Skip</button>
-            </div>
-          </motion.div>
-        )}
-      </AnimatePresence>
-
       {/* ── Speed HUD (hidden in driving view - car hood shows it) ────── */}
       {showSpeedHUD && !drivingView && (
         <motion.div
-          className={`${styles.speedHUD} ${styles[state]}`}
+          className={styles.speedHUD}
           initial={{ x: -60, opacity: 0 }}
           animate={{ x: 0, opacity: 1 }}
           transition={{ delay: 0.3 }}

@@ -23,11 +23,6 @@ const SPEED_LOOK_AHEAD_FACTOR  = 0.9   // extra meters of look-ahead per MPH
 
 // ── Module-level caches ───────────────────────────────────────────────────
 let _drawnRoutes      = []
-let _routeCoordinates = []
-
-export function setRouteGeometry(coords) {
-  _routeCoordinates = Array.isArray(coords) ? coords : []
-}
 
 // ── Component ─────────────────────────────────────────────────────────────
 export default function MapView() {
@@ -40,7 +35,6 @@ export default function MapView() {
   const pendingPinMarkerRef  = useRef(null)
 
   const setMapRef       = useStore(s => s.setMapRef)
-  const setUserLocation = useStore(s => s.setUserLocation)
   const mapStyle        = useStore(s => s.mapStyle)
   const is3D            = useStore(s => s.is3D)
   const showTraffic     = useStore(s => s.showTraffic)
@@ -83,19 +77,8 @@ export default function MapView() {
       addTerrain(map)
       addTrafficLayers(map)
       syncTrafficVisibility(map, showTraffic)
-
-      // Fly to user's GPS position as soon as map is ready
-      if (navigator.geolocation) {
-        navigator.geolocation.getCurrentPosition(
-          ({ coords }) => {
-            const { latitude: lat, longitude: lng } = coords
-            setUserLocation({ lat, lng })
-            map.flyTo({ center: [lng, lat], zoom: 15, pitch: 55, duration: 1800, essential: true })
-          },
-          (err) => console.warn('[MapView] Geolocation unavailable:', err.message),
-          { enableHighAccuracy: true, timeout: 8000 }
-        )
-      }
+      // First-fix camera flight is handled by the location marker effect
+      // (driven by useLocation's watchPosition) — no duplicate geolocation here.
     })
 
     mapRef.current       = map
@@ -124,7 +107,7 @@ export default function MapView() {
       addTrafficLayers(map)
       syncTrafficVisibility(map, showTraffic)
     })
-  }, [mapStyle, showTraffic])
+  }, [mapStyle])
 
   // ── 3D pitch toggle (not while navigating) ────────────────────────────
   useEffect(() => {
@@ -142,51 +125,38 @@ export default function MapView() {
   }, [showTraffic])
 
   // ── User location marker (changeable icon) ────────────────────────────
+  // Single effect owns the marker: creates it on first fix, rebuilds it when
+  // the icon choice changes, and keeps it glued to GPS + heading.
   const locationIcon = useStore(s => s.locationIcon)
+  const markerIconRef = useRef(null)
   useEffect(() => {
     const map = mapRef.current
     if (!map || !userLocation) return
 
-    // Recreate the marker when the icon choice changes.
-    if (userMarkerRef.current) {
-      userMarkerRef.current.remove()
-      userMarkerRef.current = null
-    }
-    const el = createLocationMarker(locationIcon)
-    userMarkerRef.current = new mapboxgl.Marker({
-      element:           el,
-      rotationAlignment: 'map',
-      pitchAlignment:    'map',
-    })
-      .setLngLat([userLocation.lng, userLocation.lat])
-      .addTo(map)
-
-    if (userHeading !== null && userHeading !== undefined) {
-      userMarkerRef.current.setRotation(userHeading)
-    }
-
-    // Apply driving-view visibility to the fresh element.
-    const st = useStore.getState()
-    const hidden = st.phase === PHASE.NAVIGATING && st.drivingView
-    const newEl = userMarkerRef.current.getElement()
-    newEl.style.opacity = hidden ? '0' : '1'
-    newEl.style.pointerEvents = hidden ? 'none' : 'auto'
-
-    return () => {
+    if (!userMarkerRef.current || markerIconRef.current !== locationIcon) {
       userMarkerRef.current?.remove()
-      userMarkerRef.current = null
+      const el = createLocationMarker(locationIcon)
+      userMarkerRef.current = new mapboxgl.Marker({
+        element:           el,
+        rotationAlignment: 'map',
+        pitchAlignment:    'map',
+      })
+        .setLngLat([userLocation.lng, userLocation.lat])
+        .addTo(map)
+      markerIconRef.current = locationIcon
+    } else {
+      userMarkerRef.current.setLngLat([userLocation.lng, userLocation.lat])
     }
-  }, [locationIcon]) // eslint-disable-line react-hooks/exhaustive-deps
-
-  // ── Keep marker glued to GPS ──────────────────────────────────────────
-  useEffect(() => {
-    const map = mapRef.current
-    if (!map || !userLocation || !userMarkerRef.current) return
-    userMarkerRef.current.setLngLat([userLocation.lng, userLocation.lat])
 
     if (userHeading !== null && userHeading !== undefined) {
       userMarkerRef.current.setRotation(userHeading)
     }
+
+    // Driving view hides the marker (3D car / hood IS the location indicator)
+    const hidden = phase === PHASE.NAVIGATING && drivingView
+    const mEl = userMarkerRef.current.getElement()
+    mEl.style.opacity       = hidden ? '0' : '1'
+    mEl.style.pointerEvents = hidden ? 'none' : 'auto'
 
     // Fly to user's location on the first fix (GPS or IP), skip during active navigation
     if (!hasCenteredOnUser.current && phase !== PHASE.NAVIGATING) {
@@ -200,20 +170,7 @@ export default function MapView() {
         map.once('load', flyWhenReady)
       }
     }
-  }, [userLocation, userHeading])
-
-  // ── Hide marker in driving view (3D car / hood IS the location indicator)
-  useEffect(() => {
-    if (!userMarkerRef.current) return
-    const el = userMarkerRef.current.getElement()
-    if (phase === PHASE.NAVIGATING && drivingView) {
-      el.style.opacity       = '0'
-      el.style.pointerEvents = 'none'
-    } else {
-      el.style.opacity       = '1'
-      el.style.pointerEvents = 'auto'
-    }
-  }, [phase, drivingView])
+  }, [userLocation, userHeading, locationIcon, phase, drivingView])
 
   // ── Chase vehicle 3D overlay lifecycle ─────────────────────────────────
   const chaseActive = phase === PHASE.NAVIGATING && drivingView && driveCam === 'chase'
@@ -226,7 +183,13 @@ export default function MapView() {
       return
     }
     const ensure = () => {
-      setChaseVehicleProfile(cockpitMode)
+      // Re-verify: navigation may have ended while the style was loading.
+      const st = useStore.getState()
+      const stillActive =
+        st.phase === PHASE.NAVIGATING && st.drivingView &&
+        st.driveCam === 'chase' && st.userLocation
+      if (!stillActive) return
+      setChaseVehicleProfile(st.cockpitMode)
       addChaseVehicleLayer(map)
     }
     if (map.isStyleLoaded()) ensure()
@@ -249,8 +212,6 @@ export default function MapView() {
   useEffect(() => {
     if (chaseActive) resetChaseCam()
   }, [chaseActive])
-
-
 
   // ── Tap-to-save map pins ──────────────────────────────────────────────
   useEffect(() => {
@@ -607,7 +568,6 @@ function _applyRouteToMap(map, geojson, isAlternate = false) {
 export function clearRoute() {
   const map = window._3dstreetsMap
   _drawnRoutes      = []
-  _routeCoordinates = []
   if (!map) return
   ;[
     'route-layer', 'route-layer-alt',
@@ -717,28 +677,3 @@ export function fitRoute(coordinates, bottomPad = 320) {
   })
 }
 
-export function drawSketchPreview(coords) {
-  const map = window._3dstreetsMap
-  if (!map || coords.length < 2) return
-  if (map.getLayer('sketch-layer'))   map.removeLayer('sketch-layer')
-  if (map.getSource('sketch-source')) map.removeSource('sketch-source')
-
-  map.addSource('sketch-source', {
-    type: 'geojson',
-    data: {
-      type:     'Feature',
-      geometry: { type: 'LineString', coordinates: coords.map(c => [c.lng, c.lat]) },
-    },
-  })
-  map.addLayer({
-    id: 'sketch-layer', type: 'line', source: 'sketch-source',
-    slot: 'top',
-    paint: {
-      'line-color':     ROUTE_COLOR,
-      'line-width':     3,
-      'line-dasharray': [5, 4],
-      'line-opacity':   0.85,
-    },
-    layout: { 'line-cap': 'round', 'line-join': 'round' },
-  })
-}

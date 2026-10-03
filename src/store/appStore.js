@@ -74,19 +74,14 @@ function makeNavResetPatch(phase = PHASE.IDLE) {
     selectedRoute: null,
     routeSteps: [],
     currentStepIndex: 0,
-    currentLegIndex: 0,
-    legStats: [],
     eta: '--:--',
     remainingDist: '— mi',
-    rerouteAvailable: false,
-    rerouteTimeSave: '',
     showRouteStops: false,
     showNavSidebar: false,
     selectedStop: null,
     isReroutingActive: false,
     stepDistLabel: '',
     arrivalClockTime: '',
-    arrivalVisible: false,
   }
 }
 
@@ -130,7 +125,6 @@ const useStore = create((set, get) => ({
   routePref: 'fastest',
   routeOptions: [],
   selectedRoute: null,
-  routeLocked: false,
   setDestination: (destination) => set({ destination, phase: PHASE.ROUTE_PREVIEW }),
   setDestinationOnly: (destination) => set({ destination }),
   setWaypoints: (waypoints) => set({ waypoints: Array.isArray(waypoints) ? waypoints.filter(Boolean) : [] }),
@@ -146,33 +140,16 @@ const useStore = create((set, get) => ({
   setRoutePref: (routePref) => set({ routePref }),
   setRouteOptions: (routeOptions) => set({ routeOptions: Array.isArray(routeOptions) ? routeOptions : [] }),
   setSelectedRoute: (selectedRoute) => set({ selectedRoute: selectedRoute ?? null, routeSteps: Array.isArray(selectedRoute?.steps) ? selectedRoute.steps : [], currentStepIndex: 0 }),
-  setRouteLocked: (routeLocked) => set({ routeLocked }),
-  toggleRouteLock: () => set(s => ({ routeLocked: !s.routeLocked, rerouteAvailable: s.routeLocked ? s.rerouteAvailable : false, rerouteTimeSave: s.routeLocked ? s.rerouteTimeSave : '' })),
-
-  currentLegIndex: 0,
-  legStats: [],
-  setLegStats: (legStats) => set({ legStats: Array.isArray(legStats) ? legStats : [] }),
-  advanceLeg: () => {
-    const { currentLegIndex, getAllStops } = get()
-    const stops = getAllStops()
-    const next = currentLegIndex + 1
-    if (next >= stops.length) set({ ...makeNavResetPatch(PHASE.IDLE), arrivalVisible: true })
-    else set({ currentLegIndex: next })
-  },
 
   routeSteps: [],
   currentStepIndex: 0,
   eta: '--:--',
   remainingDist: '— mi',
   speedMPH: 0,
-  speedLimit: 65,
   showSpeedHUD: true,
-  rerouteAvailable: false,
-  rerouteTimeSave: '',
   isReroutingActive: false,
   stepDistLabel: '',
   arrivalClockTime: '',
-  arrivalVisible: false,
   setRouteSteps: (routeSteps) => set(s => {
     const safeSteps = Array.isArray(routeSteps) ? routeSteps : []
     const maxIndex = Math.max(0, safeSteps.length - 1)
@@ -186,13 +163,9 @@ const useStore = create((set, get) => ({
   setEta: (eta) => set({ eta }),
   setRemainingDist: (remainingDist) => set({ remainingDist }),
   setSpeedMPH: (speedMPH) => set({ speedMPH }),
-  setSpeedLimit: (speedLimit) => set({ speedLimit }),
-  setShowSpeedHUD: (showSpeedHUD) => set({ showSpeedHUD }),
-  setRerouteAvailable: (rerouteAvailable, rerouteTimeSave = '') => set({ rerouteAvailable, rerouteTimeSave }),
   setIsReroutingActive: (isReroutingActive) => set({ isReroutingActive: Boolean(isReroutingActive) }),
   setStepDistLabel: (stepDistLabel) => set({ stepDistLabel }),
   setArrivalClockTime: (arrivalClockTime) => set({ arrivalClockTime }),
-  setArrivalVisible: (arrivalVisible) => set({ arrivalVisible }),
 
   aiMessages: [],
   aiThinking: false,
@@ -201,17 +174,14 @@ const useStore = create((set, get) => ({
     set(s => ({ aiMessages: [...s.aiMessages, { id: msg.id ?? `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`, role: msg.role, content: String(msg.content) }] }))
   },
   setAIThinking: (aiThinking) => set({ aiThinking: Boolean(aiThinking) }),
-  clearAIChat: () => set({ aiMessages: [], aiThinking: false }),
 
   showPOI: false,
   showSettings: false,
-  showWaypoints: false,
   showRouteStops: false,
   showNavSidebar: false,
   poiCategory: 'food',
   setShowPOI: (showPOI) => set({ showPOI }),
   setShowSettings: (showSettings) => set({ showSettings }),
-  setShowWaypoints: (showWaypoints) => set({ showWaypoints }),
   setShowRouteStops: (showRouteStops) => set({ showRouteStops }),
   setShowNavSidebar: (showNavSidebar) => set({ showNavSidebar }),
   setPoiCategory: (poiCategory) => set({ poiCategory }),
@@ -223,7 +193,7 @@ const useStore = create((set, get) => ({
     const { destination, selectedRoute, routeSteps } = get()
     if (!destination || !selectedRoute) return
     const nextSteps = Array.isArray(routeSteps) && routeSteps.length > 0 ? routeSteps : (Array.isArray(selectedRoute.steps) ? selectedRoute.steps : [])
-    set({ phase: PHASE.NAVIGATING, routeSteps: nextSteps, currentStepIndex: 0, currentLegIndex: 0, showRouteStops: false, showNavSidebar: false, rerouteAvailable: false, rerouteTimeSave: '', stepDistLabel: '', arrivalClockTime: '', arrivalVisible: false })
+    set({ phase: PHASE.NAVIGATING, routeSteps: nextSteps, currentStepIndex: 0, showRouteStops: false, showNavSidebar: false, stepDistLabel: '', arrivalClockTime: '' })
   },
   endNavigation: () => set(makeNavResetPatch(PHASE.IDLE)),
   enterSketch: () => set({ phase: PHASE.SKETCHING }),
@@ -245,24 +215,6 @@ const useStore = create((set, get) => ({
     persistPins(pins)
     return { savedPins: pins, pinDropMode: false }
   }),
-  removeSavedPin: (id) => set(s => {
-    const pins = s.savedPins.filter(p => p.id !== id)
-    persistPins(pins)
-    return { savedPins: pins }
-  }),
-
-  savedRoute: null,
-  saveCurrentRoute: () => {
-    const { destination, waypoints } = get()
-    if (!destination) return
-    set({ savedRoute: { destination, waypoints: [...waypoints] } })
-  },
-  restoreSavedRoute: () => {
-    const { savedRoute } = get()
-    if (!savedRoute) return
-    set({ destination: savedRoute.destination, waypoints: savedRoute.waypoints, phase: PHASE.ROUTE_PREVIEW })
-  },
-  clearSavedRoute: () => set({ savedRoute: null }),
 
   getAllStops: () => {
     const { waypoints, destination } = get()

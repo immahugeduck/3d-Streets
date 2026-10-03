@@ -1,29 +1,7 @@
-import { useRef } from 'react'
 import { motion } from 'framer-motion'
+import { useSteeringAngle } from '../../hooks/useSteeringAngle'
 import useStore from '../../store/appStore'
 import styles from './CarHoodOverlay.module.css'
-
-const MANEUVER_ICONS = {
-  'turn-left': '↰',
-  'turn-right': '↱',
-  'turn-slight-left': '↖',
-  'turn-slight-right': '↗',
-  'turn-sharp-left': '⬐',
-  'turn-sharp-right': '⬏',
-  uturn: '↩',
-  roundabout: '↻',
-  merge: '⤵',
-  arrive: '📍',
-  depart: '🚀',
-  straight: '↑',
-  default: '↑',
-}
-
-function getManeuverIcon(type, modifier) {
-  if (!type) return '↑'
-  const key = modifier ? `${type}-${modifier}`.replace(/ /g, '-') : type
-  return MANEUVER_ICONS[key] ?? MANEUVER_ICONS[type] ?? MANEUVER_ICONS.default
-}
 
 // ── Forza-style 3-spoke steering wheel. Rotates with steering input. ─────
 function SteeringWheel({ angle }) {
@@ -121,31 +99,11 @@ function Tachometer({ speedMPH }) {
 export default function CarHoodOverlay() {
   const speedMPH       = useStore(s => s.speedMPH)
   const drivingView    = useStore(s => s.drivingView)
-  const cockpitMode    = useStore(s => s.cockpitMode)
   const driveCam       = useStore(s => s.driveCam)
-  const userHeading    = useStore(s => s.userHeading)
   const toggleDrivingView = useStore(s => s.toggleDrivingView)
-  const routeSteps     = useStore(s => s.routeSteps)
-  const currentStepIndex = useStore(s => s.currentStepIndex)
-  const remainingDist  = useStore(s => s.remainingDist)
-
-  const step = routeSteps[currentStepIndex]
-  const nextStep = routeSteps[currentStepIndex + 1]
 
   // Steering angle from heading deltas — smoothed, clamped like a wheel.
-  const steerRef = useRef(0)
-  const prevHeadingRef = useRef(null)
-  let steering = steerRef.current
-  if (Number.isFinite(userHeading)) {
-    const prev = prevHeadingRef.current
-    if (prev !== null && prev !== undefined) {
-      let d = userHeading - prev
-      d = ((d + 540) % 360) - 180
-      steering = Math.max(-90, Math.min(90, steering * 0.72 + d * 5))
-      steerRef.current = steering
-    }
-    prevHeadingRef.current = userHeading
-  }
+  const steering = useSteeringAngle()
 
   // Hood/cockpit overlay only renders in those camera modes —
   // chase cam shows the 3D vehicle instead.
@@ -154,7 +112,7 @@ export default function CarHoodOverlay() {
 
   return (
     <motion.div
-      className={`${styles.overlay} ${styles[`mode-${cockpitMode}`] || ''}`}
+      className={styles.overlay}
       initial={{ y: 120, opacity: 0 }}
       animate={{ y: 0, opacity: 1 }}
       exit={{ y: 120, opacity: 0 }}
@@ -327,18 +285,6 @@ export default function CarHoodOverlay() {
           {!hoodOnly && <SteeringWheel angle={steering} />}
           <div className={styles.gaugeCluster}>
             <Tachometer speedMPH={speedMPH} />
-          </div>
-        </div>
-
-        <div className={styles.navDisplay}>
-          <div className={styles.navDisplayTop}>
-            <span className={styles.navManeuver}>{getManeuverIcon(step?.maneuver, step?.modifier)}</span>
-            <span className={styles.navDistance}>{step?.distanceLabel ?? '—'}</span>
-          </div>
-          <div className={styles.navInstruction}>{step?.instruction ?? 'Continue on current road'}</div>
-          <div className={styles.navMeta}>
-            <span className={styles.navNext}>NEXT {getManeuverIcon(nextStep?.maneuver, nextStep?.modifier)}</span>
-            <span>{remainingDist || '—'} left</span>
           </div>
         </div>
 

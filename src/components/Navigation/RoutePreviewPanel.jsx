@@ -25,7 +25,7 @@ export default function RoutePreviewPanel() {
   const setEta         = useStore(s => s.setEta)
   const setRemainingDist = useStore(s => s.setRemainingDist)
   const setPhase       = useStore(s => s.setPhase)
-  const setShowWaypoints = useStore(s => s.setShowWaypoints)
+  const setShowRouteStops = useStore(s => s.setShowRouteStops)
   const enterSketch    = useStore(s => s.enterSketch)
   const startNavigation = useStore(s => s.startNavigation)
 
@@ -81,6 +81,12 @@ export default function RoutePreviewPanel() {
   }
 
   function go() {
+    // Drop the alternate preview lines; navigation draws only the
+    // selected route (the drive camera adds the suggested-line overlay).
+    clearRoute()
+    if (selectedRoute?.geometry) {
+      drawRoute({ type: 'Feature', geometry: selectedRoute.geometry }, false)
+    }
     startNavigation()
   }
 
@@ -109,7 +115,7 @@ export default function RoutePreviewPanel() {
           <div className={styles.destAddr}>{destination?.address}</div>
         </div>
         <div className={styles.headerActions}>
-          <button className={styles.stopBtn} onClick={() => setShowWaypoints(true)}>
+          <button className={styles.stopBtn} onClick={() => setShowRouteStops(true)}>
             + Stop
           </button>
           <button className={styles.cancelBtn} onClick={cancel}>✕</button>
